@@ -1,14 +1,23 @@
 #!/usr/local/bin/Rscript
 #
+# Simulation code for the paper:
+#     Kate Truman, Alex Gavryushkin and Sasha Gavryushkina. Timetrees under the Fossilised Birth-Death model
+# are Identifiable.
+#
 # R script is an edited version of code provided by Louca et al. for their paper "Fundamental identifiability limits in molecular epidemiology" (2021).
 # Edits (by Kate Truman) were made in order to conduct a similar simulation for FBD trees.
 # Edits are as follows:
-# Only generate one tree type of larger size (175,000 - 200,000 tips)
+# Generate one tree type of larger size (175,000 - 200,000 tips)
+# Produce a congruent model to that fitted to this tree
+# Calculate deterministic values including nLTT for the original and congruent model
+# under different kappa values.
 # Include extant and extinct tips in generated trees
 # Remove multiple grid sizes and selection via AIC due to technical issues
 # Focus on piecewise linear models only (not also skyline models)
-# Specify set psi as in Louca and Pennell's paper
+# Results for exponential models only
+# Specify set psi, as in Louca and Pennell's paper, for piecewise linear fitting
 #
+# Original description:
 # This R script is provided as a Supplemental code to the paper:
 #   Louca, S., McLaughlin, A., MacPherson, A., Joy, J.B., Pennell, M.W. (in review as of 2021). Fundamental identifiability limits in molecular epidemiology.
 # The script simulates trees from multiple random but realistically complex epidemiological homogenous birth-death-sampling (HBDS) models, then fits skyline or piecewise linear BDS models to those trees via maximum likelihood, and evaluates the accuracy of the fitted models.
@@ -45,15 +54,11 @@
 ###################################
 # OPTIONS
 
-REQUIRED_PACKAGES	= c("Rcpp", "nloptr", "ape", "castor") # list any required packages here #castor
+REQUIRED_PACKAGES	= c("Rcpp", "nloptr", "ape", "castor") # list any required packages here 
 OUTPUT_DIR			= "output"
-# FBD_TIPS = TRUE
-# SET_KAPPA = 1
-
-#library("skelCastor")
 
 
-NUMBER_OF_PARALLEL_THREADS 	= 34 	# number of parallel threads to use for fitting
+NUMBER_OF_PARALLEL_THREADS 	= 52 	# number of parallel threads to use for fitting
 MODEL_ADEQUACY_NBOOTSTRAPS 	= 1000 	# number of bootstraps to use for evaluating the adequacy of fitted models. 
 MODEL_ADEQUACY_MAX_RUNTIME	= 10 	# maximum runtime (seconds) per bootstrap simulation when testing model adequacy
 
@@ -69,11 +74,12 @@ FITTING_HOMOGENOUS_GRID			= FALSE
 fitting_Ntips2max_model_runtime = function(Ntips) max(2,Ntips/1e4) # runtime in seconds to allocate for likelihood evaluations during fitting, as a function of tree size
 
 ENSEMBLE_HBD_FITTING_NSIMS 			 	 		 = 1 # number of trees to simulate and fit models to, in each of the categories "exp" and "OU"
-ENSEMBLE_HBD_FITTING_MIN_NTIPS		 	 		 = 100 #10000  # 175000
-ENSEMBLE_HBD_FITTING_MAX_NTIPS			 		 = 500#50000 # 200000
+ENSEMBLE_HBD_FITTING_MIN_NTIPS		 	 		 = 100 
+ENSEMBLE_HBD_FITTING_MAX_NTIPS			 		 = 200
 ENSEMBLE_HBD_FITTING_REPEAT_FAILED_TREES 		 = TRUE
 ENSEMBLE_HBD_FITTING_SKYLINE_FIX_PRESENT_DAY_PSI = TRUE
 ENSEMBLE_HBD_FITTING_PLINEAR_FIX_PRESENT_DAY_PSI = TRUE
+INCLUDE_OU = FALSE
 
 # plot styles
 BLACK_CURVE_COLOR		= "#303030"
@@ -103,6 +109,8 @@ options(warn=1) # print warnings as they occur
 
 ###################################
 # AUXILIARY FUNCTIONS
+
+# generate_tree_hbds function from castor edited to allow for past sample labelling
 
 # generate a random phylogenetic tree according to a homogenous birth-death-sampling process
 # the speciation, extinction and continuous (Poissonian) sampling rate can each be time-dependent, and there may be additional discrete sampling times included
@@ -234,11 +242,11 @@ generate_tree_hbds_man = function(	max_sampled_tips		= NULL,
                                                       include_extinct			= include_extinct,
                                                       include_birth_times		= include_birth_times,
                                                       include_death_times		= include_death_times)
-  # str(results)
   if(!results$success) return(list(success=FALSE, error=results$error)); # something went wrong
   Ntips	= results$Ntips
   Nnodes 	= results$Nnodes
   Nedges 	= results$Nedges
+  # allow labelling of past sampling events
   allTips = 1:Ntips
   tipLabels = ifelse(allTips %in% results$sampled_clades & !(allTips %in% results$retained_clades), paste("removal.", allTips, sep=""), paste(tip_basename, allTips, sep=""))
   
@@ -267,6 +275,8 @@ generate_tree_hbds_man = function(	max_sampled_tips		= NULL,
               extinct_tips		= (if(include_extinct) results$extinct_tips+1 else integer())));
   
 }
+
+# simulate_deterministic_hbds function from castor edited to remove calculations dependent on a non-zero kappa value.
 
 simulate_deterministic_hbds_man = function(	age_grid						= NULL,		# numeric vector listing grid ages in ascending order, on which the various model parameters (lambda, mu, rho, kappa) are specified. The age grid must generally cover the maximum possible simulation period (i.e. from 0 to max(requested_ages)), unless splines_degree=0 (in which case everything is extrapolated as constant if needed)
                                             lambda							= NULL,		# numeric vector of the same length as age_grid[], listing per-capita birth rates (speciation rates) at each age_grid point. Can also be a single number. Can also be NULL, which is the same as being zero.
@@ -427,7 +437,7 @@ simulate_deterministic_hbds_man = function(	age_grid						= NULL,		# numeric vec
               PSR					= simulation$PSR,	# pulled speciation rate
               PRP					= simulation$PRP,	# pulled retention probability
               diversification_rate= simulation$diversification, # net diversification rate, lambda-mu-psi
-              branching_density	= simulation$PSR * simulation$nLTT, # non-normalized probability density of branching points over time (in units 1/time)
+              # branching_density	= simulation$PSR * simulation$nLTT, # non-normalized probability density of branching points over time (in units 1/time)
               # sampling_density	= simulation$psi * simulation$total_diversity/LTT_AUC, # non-normalized probability density of sampling points over time (in units 1/time)
               lambda_psi			= simulation$lambda * simulation$psi,
               kappa_psi			= simulation$psi * simulation$kappa,
@@ -1082,94 +1092,6 @@ compare_tree_to_model = function(	plot_dir,
               data_file_comments	= sprintf("Removal rate (aka. become-uninfectious rate) of tree (%s) vs. model (%s)",tree_name,model_name),
               verbose 			= TRUE,
               verbose_prefix 		= "  ")
-  # plot_curves(file_basepath		= sprintf("%s/sampling_density",plot_dir),
-  #             xtype				= 'age',
-  #             ytype				= 'sampling_density',
-  #             case_tag			= case_tag,
-  #             curves				= list(list(sim$ages,sim$sampling_density)),
-  #             curve_names			= c("model sampling_density"),
-  #             curve_colors		= c(BLUE_CURVE_COLOR),
-  #             curve_line_types	= c(1),
-  #             curve_widths		= c(1.5),
-  #             reverse_x			= TRUE,
-  #             plot_minx			= 0,
-  #             plot_maxx			= root_age,
-  #             plot_miny			= 0,
-  #             resolution			= PLOT_DOWNSAMPLING_RESOLUTION,
-  #             xlabel				= sprintf("age (%s)",time_unit),
-  #             ylabel				= sprintf("sampling_density (tips/%s)",time_unit),
-  #             plot_log_values		= FALSE,
-  #             legend_pos			= "none",
-  #             plot_title			= sprintf("Model sampling_density (%s)\n%s",model_name,subtitle),
-  #             data_file_comments	= sprintf("Sampling density of model (%s)",model_name),
-  #             verbose 			= TRUE,
-  #             verbose_prefix 		= "  ")
-  # plot_curves(file_basepath		= sprintf("%s/deterministic_sampling_density",plot_dir),
-  #             xtype				= 'age',
-  #             ytype				= 'deterministic_sampling_density',
-  #             case_tag			= case_tag,
-  #             curves				= list(list(sim$ages,(sim$sampling_density*sim$nLTT))),
-  #             curve_names			= c("model deterministic sampling_density"),
-  #             curve_colors		= c(BLUE_CURVE_COLOR),
-  #             curve_line_types	= c(1),
-  #             curve_widths		= c(1.5),
-  #             reverse_x			= TRUE,
-  #             plot_minx			= 0,
-  #             plot_maxx			= root_age,
-  #             plot_miny			= 0,
-  #             resolution			= PLOT_DOWNSAMPLING_RESOLUTION,
-  #             xlabel				= sprintf("age (%s)",time_unit),
-  #             ylabel				= sprintf("deterministic sampling_density (tips/%s)",time_unit),
-  #             plot_log_values		= FALSE,
-  #             legend_pos			= "none",
-  #             plot_title			= sprintf("Model deterministic sampling_density (%s)\n%s",model_name,subtitle),
-  #             data_file_comments	= sprintf("Determinsitic sampling density of model (%s)",model_name),
-  #             verbose 			= TRUE,
-  #             verbose_prefix 		= "  ")
-  plot_curves(file_basepath		= sprintf("%s/branching_density%s",plot_dir, case_tag),
-              xtype				= 'age',
-              ytype				= 'branching_density',
-              case_tag			= case_tag,
-              curves				= list(list(sim$ages,sim$branching_density)),
-              curve_names			= c("model branching_density"),
-              curve_colors		= c(BLUE_CURVE_COLOR),
-              curve_line_types	= c(1),
-              curve_widths		= c(1.5),
-              reverse_x			= TRUE,
-              plot_minx			= 0,
-              plot_maxx			= root_age,
-              plot_miny			= 0,
-              resolution			= PLOT_DOWNSAMPLING_RESOLUTION,
-              xlabel				= sprintf("age (%s)",time_unit),
-              ylabel				= sprintf("branching_density (nodes/%s)",time_unit),
-              plot_log_values		= FALSE,
-              legend_pos			= "none",
-              plot_title			= sprintf("Model branching_density (%s)\n%s",model_name,subtitle),
-              data_file_comments	= sprintf("Branching density of model (%s)",model_name),
-              verbose 			= TRUE,
-              verbose_prefix 		= "  ")
-  plot_curves(file_basepath		= sprintf("%s/deterministic_branching_density%s",plot_dir, case_tag),
-              xtype				= 'age',
-              ytype				= 'deterministic_branching_density',
-              case_tag			= case_tag,
-              curves				= list(list(sim$ages,(sim$branching_density*sim$nLTT))),
-              curve_names			= c("model deterministic_branching_density"),
-              curve_colors		= c(BLUE_CURVE_COLOR),
-              curve_line_types	= c(1),
-              curve_widths		= c(1.5),
-              reverse_x			= TRUE,
-              plot_minx			= 0,
-              plot_maxx			= root_age,
-              plot_miny			= 0,
-              resolution			= PLOT_DOWNSAMPLING_RESOLUTION,
-              xlabel				= sprintf("age (%s)",time_unit),
-              ylabel				= sprintf("deterministic_branching_density (nodes/%s)",time_unit),
-              plot_log_values		= FALSE,
-              legend_pos			= "none",
-              plot_title			= sprintf("Model deterministic_branching_density (%s)\n%s",model_name,subtitle),
-              data_file_comments	= sprintf("Deterministic Branching density of model (%s)",model_name),
-              verbose 			= TRUE,
-              verbose_prefix 		= "  ")
   tree_LTT$lambda_psi = lambda*psi
   plot_curves(file_basepath		= sprintf("%s/lambda_psi%s",plot_dir, case_tag),
               xtype				= 'age',
@@ -1470,90 +1392,6 @@ plot_fitted_vs_true_model = function(	plot_dir,
               data_file_comments	= sprintf("Sampling proportion of true model (%s) vs fit model (%s)",true_model_name,fit_model_name),
               verbose 			= TRUE,
               verbose_prefix 		= "  ")	
-  # plot_curves(file_basepath		= sprintf("%s/sampling_density",plot_dir),
-  #             xtype				= 'age',
-  #             ytype				= 'sampling_density',
-  #             case_tag			= case_tag,
-  #             curves				= list(list(sim_true$ages,sim_true$sampling_density), list(sim_fit$ages,sim_fit$sampling_density)),
-  #             curve_names			= c("true", "fit"),
-  #             curve_colors		= c(BLUE_CURVE_COLOR, BLACK_CURVE_COLOR),
-  #             curve_line_types	= c(1,2),
-  #             curve_widths		= c(1.5,2.5),
-  #             reverse_x			= TRUE,
-  #             plot_minx			= 0,
-  #             plot_maxx			= root_age,
-  #             plot_miny			= 0,
-  #             resolution			= PLOT_DOWNSAMPLING_RESOLUTION,
-  #             xlabel				= sprintf("age (%s)",time_unit),
-  #             ylabel				= sprintf("sampling_density (tips/%s)",time_unit),
-  #             legend_pos			= "outside",
-  #             plot_title			= sprintf("True sampling_density (%s)\nvs. fit model (%s)\n%s",true_model_name,fit_model_name,subtitle),
-  #             data_file_comments	= sprintf("Sampling density of true model (%s) vs fit model (%s)",true_model_name,fit_model_name),
-  #             verbose 			= TRUE,
-  #             verbose_prefix 		= "  ")	
-  # plot_curves(file_basepath		= sprintf("%s/deterministic_sampling_density",plot_dir),
-  #             xtype				= 'age',
-  #             ytype				= 'deterministic_sampling_density',
-  #             case_tag			= case_tag,
-  #             curves				= list(list(sim_true$ages,(sim_true$nLTT*sim_true$sampling_density)), list(sim_fit$ages,(sim_fit$nLTT*sim_fit$sampling_density))),
-  #             curve_names			= c("true", "fit"),
-  #             curve_colors		= c(BLUE_CURVE_COLOR, BLACK_CURVE_COLOR),
-  #             curve_line_types	= c(1,2),
-  #             curve_widths		= c(1.5,2.5),
-  #             reverse_x			= TRUE,
-  #             plot_minx			= 0,
-  #             plot_maxx			= root_age,
-  #             plot_miny			= 0,
-  #             resolution			= PLOT_DOWNSAMPLING_RESOLUTION,
-  #             xlabel				= sprintf("age (%s)",time_unit),
-  #             ylabel				= sprintf("deterministic_sampling_density (tips/%s)",time_unit),
-  #             legend_pos			= "outside",
-  #             plot_title			= sprintf("True deterministic sampling_density (%s)\nvs. fit model (%s)\n%s",true_model_name,fit_model_name,subtitle),
-  #             data_file_comments	= sprintf("Deterministic sampling density of true model (%s) vs fit model (%s)",true_model_name,fit_model_name),
-  #             verbose 			= TRUE,
-  #             verbose_prefix 		= "  ")	
-  plot_curves(file_basepath		= sprintf("%s/branching_density%s",plot_dir, case_tag),
-              xtype				= 'age',
-              ytype				= 'branching_density',
-              case_tag			= case_tag,
-              curves				= list(list(sim_true$ages,sim_true$branching_density), list(sim_fit$ages,sim_fit$branching_density)),
-              curve_names			= c("true", "fit"),
-              curve_colors		= c(BLUE_CURVE_COLOR, BLACK_CURVE_COLOR),
-              curve_line_types	= c(1,2),
-              curve_widths		= c(1.5,2.5),
-              reverse_x			= TRUE,
-              plot_minx			= 0,
-              plot_maxx			= root_age,
-              plot_miny			= 0,
-              resolution			= PLOT_DOWNSAMPLING_RESOLUTION,
-              xlabel				= sprintf("age (%s)",time_unit),
-              ylabel				= sprintf("branching_density (nodes/%s)",time_unit),
-              legend_pos			= "outside",
-              plot_title			= sprintf("True branching_density (%s)\nvs. fit model (%s)\n%s",true_model_name,fit_model_name,subtitle),
-              data_file_comments	= sprintf("Sampling density of true model (%s) vs fit model (%s)",true_model_name,fit_model_name),
-              verbose 			= TRUE,
-              verbose_prefix 		= "  ")	
-  plot_curves(file_basepath		= sprintf("%s/deterministic_branching_density%s",plot_dir, case_tag),
-              xtype				= 'age',
-              ytype				= 'deterministic_branching_density',
-              case_tag			= case_tag,
-              curves				= list(list(sim_true$ages,(sim_true$nLTT*sim_true$branching_density)), list(sim_fit$ages,(sim_fit$nLTT*sim_fit$branching_density))),
-              curve_names			= c("true", "fit"),
-              curve_colors		= c(BLUE_CURVE_COLOR, BLACK_CURVE_COLOR),
-              curve_line_types	= c(1,2),
-              curve_widths		= c(1.5,2.5),
-              reverse_x			= TRUE,
-              plot_minx			= 0,
-              plot_maxx			= root_age,
-              plot_miny			= 0,
-              resolution			= PLOT_DOWNSAMPLING_RESOLUTION,
-              xlabel				= sprintf("age (%s)",time_unit),
-              ylabel				= sprintf("deterministic_branching_density (nodes/%s)",time_unit),
-              legend_pos			= "outside",
-              plot_title			= sprintf("True deterministic_branching_density (%s)\nvs. fit model (%s)\n%s",true_model_name,fit_model_name,subtitle),
-              data_file_comments	= sprintf("Determinsitic branching density of true model (%s) vs fit model (%s)",true_model_name,fit_model_name),
-              verbose 			= TRUE,
-              verbose_prefix 		= "  ")	
   plot_curves(file_basepath		= sprintf("%s/lambda_psi%s",plot_dir, case_tag),
               xtype				= 'age',
               ytype				= 'lambda_psi',
@@ -1575,27 +1413,6 @@ plot_fitted_vs_true_model = function(	plot_dir,
               data_file_comments	= sprintf("lambda*psi of true model (%s) vs fit model (%s)",true_model_name,fit_model_name),
               verbose 			= TRUE,
               verbose_prefix 		= "  ")	
-  # plot_curves(file_basepath		= sprintf("%s/total_diversity",plot_dir),
-  #             xtype				= 'age',
-  #             ytype				= 'total_diversity',
-  #             case_tag			= case_tag,
-  #             curves				= list(list(sim_true$ages,sim_true$total_diversity), list(sim_fit$ages,sim_fit$total_diversity)),
-  #             curve_names			= c("true", "fit"),
-  #             curve_colors		= c(BLUE_CURVE_COLOR, BLACK_CURVE_COLOR),
-  #             curve_line_types	= c(1,2),
-  #             curve_widths		= c(1.5,2.5),
-  #             reverse_x			= TRUE,
-  #             plot_minx			= 0,
-  #             plot_maxx			= root_age,
-  #             plot_miny			= 0,
-  #             resolution			= PLOT_DOWNSAMPLING_RESOLUTION,
-  #             xlabel				= sprintf("age (%s)",time_unit),
-  #             ylabel				= sprintf("total_diversity"),
-  #             legend_pos			= "outside",
-  #             plot_title			= sprintf("True total_diversity (%s)\nvs. fit model (%s)\n%s",true_model_name,fit_model_name,subtitle),
-  #             data_file_comments	= sprintf("Total diversity of true model (%s) vs fit model (%s)",true_model_name,fit_model_name),
-  #             verbose 			= TRUE,
-  #             verbose_prefix 		= "  ")	
   plot_curves(file_basepath		= sprintf("%s/Pmissing%s",plot_dir, case_tag),
               xtype				= 'age',
               ytype				= 'Pmissing',
@@ -1672,7 +1489,7 @@ plot_model = function(	model_name,			# (string) e.g. 'exp_lambda_const_mu'
               ylabel				= "density",
               legend_pos			= "none",
               plot_title			= sprintf("nLTT\n%s",model_name),
-              data_file_comments	= sprintf("Noralized LTT of model '%s'",model_name),
+              data_file_comments	= sprintf("Normalized LTT of model '%s'",model_name),
               save_data			= TRUE,
               verbose 			= TRUE,
               verbose_prefix 		= paste0(verbose_prefix,"  "))
@@ -1712,7 +1529,7 @@ plot_model = function(	model_name,			# (string) e.g. 'exp_lambda_const_mu'
               reverse_x			= TRUE,
               plot_minx			= 0,
               plot_maxx			= plot_maxx,
-              plot_miny			= (if(any(sim$PDR<0)) NULL else 0),
+              plot_miny			= (if(any(na.omit(sim$PDR)<0)) NULL else 0),
               resolution			= PLOT_DOWNSAMPLING_RESOLUTION,
               xlabel				= sprintf("age (%s)",time_units),
               ylabel				= sprintf("PDR (1/%s)",time_units),
@@ -1745,98 +1562,6 @@ plot_model = function(	model_name,			# (string) e.g. 'exp_lambda_const_mu'
               save_data			= TRUE,
               verbose 			= TRUE,
               verbose_prefix 		= paste0(verbose_prefix,"  "))
-  if(verbose) cat2(sprintf("%sPlotting branching density of model '%s'..\n",verbose_prefix,model_name))
-  plot_curves(file_basepath		= sprintf("%sbranching_density",plot_basepath),
-              xtype				= 'age',
-              ytype				= 'branching_density',
-              case_tag			= sprintf("%s",model_name),
-              curves				= list(list(sim$ages,sim$branching_density)),
-              curve_names			= model_name,
-              curve_colors		= BLUE_CURVE_COLOR,
-              curve_line_types	= 1,
-              curve_widths		= 2,
-              reverse_x			= TRUE,
-              plot_minx			= 0,
-              plot_maxx			= plot_maxx,
-              plot_miny			= 0,
-              resolution			= PLOT_DOWNSAMPLING_RESOLUTION,
-              xlabel				= sprintf("age (%s)",time_units),
-              ylabel				= sprintf("branching density (nodes/%s)",time_units),
-              legend_pos			= "none",
-              plot_title			= sprintf("Branching density\n%s",model_name),
-              data_file_comments	= sprintf("Branching density (branching events per time) of model '%s'",model_name),
-              save_data			= TRUE,
-              verbose 			= TRUE,
-              verbose_prefix 		= paste0(verbose_prefix,"  "))
-  if(verbose) cat2(sprintf("%sPlotting deterministic branching density of model '%s'..\n",verbose_prefix,model_name))
-  plot_curves(file_basepath		= sprintf("%sdeterministic_branching_density",plot_basepath),
-              xtype				= 'age',
-              ytype				= 'deterministic_branching_density',
-              case_tag			= sprintf("%s",model_name),
-              curves				= list(list(sim$ages,(sim$nLTT*sim$branching_density))),
-              curve_names			= model_name,
-              curve_colors		= BLUE_CURVE_COLOR,
-              curve_line_types	= 1,
-              curve_widths		= 2,
-              reverse_x			= TRUE,
-              plot_minx			= 0,
-              plot_maxx			= plot_maxx,
-              plot_miny			= 0,
-              resolution			= PLOT_DOWNSAMPLING_RESOLUTION,
-              xlabel				= sprintf("age (%s)",time_units),
-              ylabel				= sprintf("deterministic branching density (nodes/%s)",time_units),
-              legend_pos			= "none",
-              plot_title			= sprintf("Deterministic branching density\n%s",model_name),
-              data_file_comments	= sprintf("Deterministic branching density (branching events per time) of model '%s'",model_name),
-              save_data			= TRUE,
-              verbose 			= TRUE,
-              verbose_prefix 		= paste0(verbose_prefix,"  "))
-  # if(verbose) cat2(sprintf("%sPlotting sampling density of model '%s'..\n",verbose_prefix,model_name))
-  # plot_curves(file_basepath		= sprintf("%ssampling_density",plot_basepath),
-  #             xtype				= 'age',
-  #             ytype				= 'sampling_density',
-  #             case_tag			= sprintf("%s",model_name),
-  #             curves				= list(list(sim$ages,sim$sampling_density)),
-  #             curve_names			= model_name,
-  #             curve_colors		= BLUE_CURVE_COLOR,
-  #             curve_line_types	= 1,
-  #             curve_widths		= 2,
-  #             reverse_x			= TRUE,
-  #             plot_minx			= 0,
-  #             plot_maxx			= plot_maxx,
-  #             plot_miny			= 0,
-  #             resolution			= PLOT_DOWNSAMPLING_RESOLUTION,
-  #             xlabel				= sprintf("age (%s)",time_units),
-  #             ylabel				= sprintf("sampling density (tips/%s)",time_units),
-  #             legend_pos			= "none",
-  #             plot_title			= sprintf("Sampling density\n%s",model_name),
-  #             data_file_comments	= sprintf("Sampling density (sampling events per time) of model '%s'",model_name),
-  #             save_data			= TRUE,
-  #             verbose 			= TRUE,
-  # #             verbose_prefix 		= paste0(verbose_prefix,"  "))
-  # if(verbose) cat2(sprintf("%sPlotting deterministic sampling density of model '%s'..\n",verbose_prefix,model_name))
-  # plot_curves(file_basepath		= sprintf("%sdeterministic_sampling_density",plot_basepath),
-  #             xtype				= 'age',
-  #             ytype				= 'deterministic_sampling_density',
-  #             case_tag			= sprintf("%s",model_name),
-  #             curves				= list(list(sim$ages,(sim$nLTT*sim$sampling_density))),
-  #             curve_names			= model_name,
-  #             curve_colors		= BLUE_CURVE_COLOR,
-  #             curve_line_types	= 1,
-  #             curve_widths		= 2,
-  #             reverse_x			= TRUE,
-  #             plot_minx			= 0,
-  #             plot_maxx			= plot_maxx,
-  #             plot_miny			= 0,
-  #             resolution			= PLOT_DOWNSAMPLING_RESOLUTION,
-  #             xlabel				= sprintf("age (%s)",time_units),
-  #             ylabel				= sprintf("deterministic sampling density (tips/%s)",time_units),
-  #             legend_pos			= "none",
-  #             plot_title			= sprintf("Determinstic sampling density\n%s",model_name),
-  #             data_file_comments	= sprintf("Deterministic sampling density (sampling events per time) of model '%s'",model_name),
-  #             save_data			= TRUE,
-  #             verbose 			= TRUE,
-  #             verbose_prefix 		= paste0(verbose_prefix,"  "))
   if(verbose) cat2(sprintf("%sPlotting event density of model '%s'..\n",verbose_prefix,model_name))
   plot_curves(file_basepath		= sprintf("%slambda_psi",plot_basepath),
               xtype				= 'age',
@@ -1929,29 +1654,6 @@ plot_model = function(	model_name,			# (string) e.g. 'exp_lambda_const_mu'
               save_data			= TRUE,
               verbose 			= TRUE,
               verbose_prefix 		= paste0(verbose_prefix,"  "))
-  if(verbose) cat2(sprintf("%sPlotting total diversity of model '%s'..\n",verbose_prefix,model_name))
-  # plot_curves(file_basepath		= sprintf("%stotal_diversity",plot_basepath),
-  #             xtype				= 'age',
-  #             ytype				= 'total_diversity',
-  #             case_tag			= sprintf("%s",model_name),
-  #             curves				= list(list(sim$ages,sim$total_diversity)),
-  #             curve_names			= model_name,
-  #             curve_colors		= BLUE_CURVE_COLOR,
-  #             curve_line_types	= 1,
-  #             curve_widths		= 2,
-  #             reverse_x			= TRUE,
-  #             plot_minx			= 0,
-  #             plot_maxx			= plot_maxx,
-  #             plot_miny			= 0,
-  #             resolution			= PLOT_DOWNSAMPLING_RESOLUTION,
-  #             xlabel				= sprintf("age (%s)",time_units),
-  #             ylabel				= "total diversity",
-  #             legend_pos			= "none",
-  #             plot_title			= sprintf("Total diversity\n%s",model_name),
-  #             data_file_comments	= sprintf("Total diversity of model '%s'",model_name),
-  #             save_data			= TRUE,
-  #             verbose 			= TRUE,
-  #             verbose_prefix 		= paste0(verbose_prefix,"  "))
   if(verbose) cat2(sprintf("%sPlotting lambda of model '%s'..\n",verbose_prefix,model_name))
   plot_curves(file_basepath		= sprintf("%slambda",plot_basepath),
               xtype				= 'age',
@@ -2036,7 +1738,7 @@ assess_model_adequacy = function(	tree,
                                   max_extant_tips = NULL,
                                   Nthreads = 1){
   root_age = get_tree_span(tree)$max_distance
-  adequacy = model_adequacy_hbds(	tree,  #castor::
+  adequacy = model_adequacy_hbds(	tree, 
                                           models				= models,
                                           splines_degree		= 1,
                                           Nbootstraps			= Nbootstraps,
@@ -2095,6 +1797,7 @@ cat2 = function(message, file=logfile, append=TRUE){
 }
 
 
+# Fit and plot piecewise linear models given the existing tree and fitted model.
 plinear_fit_and_plot <- function(sim_true, tree, properties, correct_psi = FALSE, kappa, results_df = fit_results){
   
   # property order: (1) root_age, (2) stem_age, (3) end_age, (4) tree_LTT, (5) age0, (6) tree_LTT0
@@ -2190,11 +1893,6 @@ plinear_fit_and_plot <- function(sim_true, tree, properties, correct_psi = FALSE
       results_df$plinear_sampling_proportion_R2[sim] 	= get_R2(xtrue=sim_true$ages, ytrue=sim_true$sampling_proportion, xfit=sim_fit$ages, yfit=sim_fit$sampling_proportion)
       results_df$plinear_net_growth_rate_R2[sim] 		= get_R2(xtrue=sim_true$ages, ytrue=sim_true$diversification_rate, xfit=sim_fit$ages, yfit=sim_fit$diversification_rate)
       results_df$plinear_nLTT_R2[sim]					= get_R2(xtrue=sim_true$ages, ytrue=sim_true$nLTT, xfit=sim_fit$ages, yfit=sim_fit$nLTT)
-      results_df$plinear_branching_density_R2[sim]		= get_R2(xtrue=sim_true$ages, ytrue=sim_true$branching_density, xfit=sim_fit$ages, yfit=sim_fit$branching_density)
-      # results_df$plinear_sampling_density_R2[sim]		= get_R2(xtrue=sim_true$ages, ytrue=sim_true$sampling_density, xfit=sim_fit$ages, yfit=sim_fit$sampling_density)
-      results_df$plinear_deterministic_branching_density_R2[sim]		= get_R2(xtrue=sim_true$ages, ytrue=sim_true$branching_density*sim_true$nLTT, xfit=sim_fit$ages, yfit=sim_fit$branching_density*sim_fit$nLTT)
-      # results_df$plinear_deterministic_sampling_density_R2[sim]		= get_R2(xtrue=sim_true$ages, ytrue=sim_true$sampling_density*sim_true$nLTT, xfit=sim_fit$ages, yfit=sim_fit$sampling_density*sim_fit$nLTT)
-      # results_df$plinear_total_diversity_R2[sim]			= get_R2(xtrue=sim_true$ages, ytrue=sim_true$total_diversity, xfit=sim_fit$ages, yfit=sim_fit$total_diversity)
       results_df$plinear_lambda_MMNE[sim] 				= get_MMNE(xtrue=sim_true$ages, ytrue=sim_true$lambda, xfit=sim_fit$ages, yfit=sim_fit$lambda)
       results_df$plinear_mu_MMNE[sim] 					= get_MMNE(xtrue=sim_true$ages, ytrue=sim_true$mu, xfit=sim_fit$ages, yfit=sim_fit$mu)
       results_df$plinear_psi_MMNE[sim] 					= get_MMNE(xtrue=sim_true$ages, ytrue=sim_true$psi, xfit=sim_fit$ages, yfit=sim_fit$psi)
@@ -2202,12 +1900,7 @@ plinear_fit_and_plot <- function(sim_true, tree, properties, correct_psi = FALSE
       results_df$plinear_removal_rate_MMNE[sim] 			= get_MMNE(xtrue=sim_true$ages, ytrue=sim_true$removal_rate, xfit=sim_fit$ages, yfit=sim_fit$removal_rate)
       results_df$plinear_sampling_proportion_MMNE[sim] 	= get_MMNE(xtrue=sim_true$ages, ytrue=sim_true$sampling_proportion, xfit=sim_fit$ages, yfit=sim_fit$sampling_proportion)
       results_df$plinear_net_growth_rate_MMNE[sim] 		= get_MMNE(xtrue=sim_true$ages, ytrue=sim_true$diversification_rate, xfit=sim_fit$ages, yfit=sim_fit$diversification_rate)
-      # results_df$plinear_total_diversity_MMNE[sim] 		= get_MMNE(xtrue=sim_true$ages, ytrue=sim_true$total_diversity, xfit=sim_fit$ages, yfit=sim_fit$total_diversity)
       results_df$plinear_nLTT_MMNE[sim]					= get_MMNE(xtrue=sim_true$ages, ytrue=sim_true$nLTT, xfit=sim_fit$ages, yfit=sim_fit$nLTT)
-      results_df$plinear_branching_density_MMNE[sim]		= get_MMNE(xtrue=sim_true$ages, ytrue=sim_true$branching_density, xfit=sim_fit$ages, yfit=sim_fit$branching_density)
-      # results_df$plinear_sampling_density_MMNE[sim]		= get_MMNE(xtrue=sim_true$ages, ytrue=sim_true$sampling_density, xfit=sim_fit$ages, yfit=sim_fit$sampling_density)
-      results_df$plinear_determinstic_branching_density_MMNE[sim]		= get_MMNE(xtrue=sim_true$ages, ytrue=sim_true$branching_density*sim_true$nLTT, xfit=sim_fit$ages, yfit=sim_fit$branching_density*sim_fit$nLTT)
-      # results_df$plinear_deterministic_sampling_density_MMNE[sim]		= get_MMNE(xtrue=sim_true$ages, ytrue=sim_true$sampling_density*sim_true$nLTT, xfit=sim_fit$ages, yfit=sim_fit$sampling_density*sim_fit$nLTT)
       results_df$plinear_slope_lambda[sim]				= get_linear_slope(x=sim_fit$ages, y=sim_fit$lambda, include_intercept=TRUE)
       results_df$plinear_slope_mu[sim]					= get_linear_slope(x=sim_fit$ages, y=sim_fit$mu, include_intercept=TRUE)
       results_df$plinear_slope_psi[sim]					= get_linear_slope(x=sim_fit$ages, y=sim_fit$psi, include_intercept=TRUE)
@@ -2215,10 +1908,6 @@ plinear_fit_and_plot <- function(sim_true, tree, properties, correct_psi = FALSE
       results_df$plinear_slope_removal_rate[sim]			= get_linear_slope(x=sim_fit$ages, y=sim_fit$removal_rate, include_intercept=TRUE)
       results_df$plinear_slope_sampling_proportion[sim]	= get_linear_slope(x=sim_fit$ages, y=sim_fit$sampling_proportion, include_intercept=TRUE)
       results_df$plinear_slope_net_growth_rate[sim]		= get_linear_slope(x=sim_fit$ages, y=sim_fit$diversification_rate, include_intercept=TRUE)
-      results_df$plinear_slope_branching_density[sim]	= get_linear_slope(x=sim_fit$ages, y=sim_fit$branching_density, include_intercept=TRUE)
-      # results_df$plinear_slope_sampling_density[sim]		= get_linear_slope(x=sim_fit$ages, y=sim_fit$sampling_density, include_intercept=TRUE)
-      results_df$plinear_slope_deterministic_branching_density[sim]	= get_linear_slope(x=sim_fit$ages, y=sim_fit$branching_density*sim_fit$nLTT, include_intercept=TRUE)
-      # results_df$plinear_slope_deterministic_sampling_density[sim]		= get_linear_slope(x=sim_fit$ages, y=sim_fit$sampling_density*sim_fit$nLTT, include_intercept=TRUE)
       results_df$plinear_mean_lambda[sim]				= mean(sim_fit$lambda, na.rm=TRUE)
       results_df$plinear_mean_mu[sim]					= mean(sim_fit$mu, na.rm=TRUE)
       results_df$plinear_mean_psi[sim]					= mean(sim_fit$psi, na.rm=TRUE)
@@ -2226,11 +1915,6 @@ plinear_fit_and_plot <- function(sim_true, tree, properties, correct_psi = FALSE
       results_df$plinear_mean_removal_rate[sim]			= mean(sim_fit$removal_rate, na.rm=TRUE)
       results_df$plinear_mean_sampling_proportion[sim]	= mean(sim_fit$sampling_proportion, na.rm=TRUE)
       results_df$plinear_mean_net_growth_rate[sim]		= mean(sim_fit$diversification_rate, na.rm=TRUE)
-      results_df$plinear_mean_branching_density[sim]		= mean(sim_fit$branching_density, na.rm=TRUE)
-      # results_df$plinear_mean_sampling_density[sim]		= mean(sim_fit$sampling_density, na.rm=TRUE)
-      results_df$plinear_mean_deterministic_branching_density[sim]		= mean(sim_fit$branching_density*sim_fit$nLTT, na.rm=TRUE)
-      #  results_df$plinear_mean_deterministic_sampling_density[sim]		= mean(sim_fit$sampling_density*sim_fit$nLTT, na.rm=TRUE)
-      
       cat2(sprintf("    Plotting fitted HBDS model..\n"))
       plot_fitted_vs_true_model(	plot_dir			= fit_dir,
                                  case_tag			= "plinear comparison",
@@ -2281,6 +1965,7 @@ generate_new_tree <- function(include_exs=FALSE, situation, seq_times, kappa = 0
                                     no_full_extinction		= TRUE,
                                     tip_basename			= "tip.")
   if(!(tree_gen$success)){
+    # cat(tree_gen$error)
     return(list(FALSE))
   }
   
@@ -2305,33 +1990,16 @@ generate_new_tree <- function(include_exs=FALSE, situation, seq_times, kappa = 0
   age_grid = seq(from=0, to=stem_age, length.out=1000)
   
   properties = list(root_age, stem_age, end_age, tree_LTT, age0, tree_LTT0)
-  
-  cat(max(lambda), min(lambda), max(mu), min(mu), max(psi), min(psi), tree_LTT0, age0)
-  # if (set_grid){
-  #    sim_true = simulate_deterministic_hbds(	age_grid		= seq_times,
-  #                                            lambda			= lambda,
-  #                                            mu				= mu,
-  #                                            psi				= psi,
-  #                                            kappa			= kappa,
-  #                                            requested_ages	= seq(from=0,to=root_age,length.out=1000),
-  #                                            age0			= age0,
-  #                                            LTT0			= tree_LTT0,
-  #                                            splines_degree	= 1)
-  #  }
-  # else {
-  cat("before\n")
-  sim_true = simulate_deterministic_hbds_man(	age_grid		= rev(approx(x=age_grid,y=lambda,xout=tree_gen$final_time+end_age-age_grid)$x),
-                                          lambda			= rev(approx(x=age_grid,y=lambda,xout=tree_gen$final_time+end_age-age_grid)$y),
-                                          mu				= rev(approx(x=age_grid,y=mu,xout=tree_gen$final_time+end_age-age_grid)$y),
-                                          psi				= rev(approx(x=age_grid,y=psi,xout=tree_gen$final_time+end_age-age_grid)$y),                                     kappa			= kappa,
+  sim_true = simulate_deterministic_hbds_man(	age_grid		= age_grid,
+                                          lambda			= rev(approx(x=seq_times,y=lambda,xout=tree_gen$final_time+end_age-age_grid)$y),
+                                          mu				= rev(approx(x=seq_times,y=mu,xout=tree_gen$final_time+end_age-age_grid)$y),
+                                          psi				= rev(approx(x=seq_times,y=psi,xout=tree_gen$final_time+end_age-age_grid)$y),                                     kappa			= kappa,
                                               requested_ages	= seq(from=0,to=root_age,length.out=1000),
                                               age0			= age0,
                                               LTT0			= tree_LTT0,
                                               splines_degree	= 1)
-  # }
-  cat("after\n")
-  str(sim_true)
   if(!sim_true$success){
+    cat(sim_true$error)
     return(list(FALSE))
   }
   return(list(TRUE, tree_gen, sim_true, properties))
@@ -2351,17 +2019,16 @@ generate_first_tree <- function(situation, age_grid, lambda, mu, psi){
   sim_true = gen_result[[3]]
   properties = gen_result[[4]]
   age_grid = seq(from=0, to=properties[[2]], length.out=1000)
-  alt_lambda = (lambdaA - lambdaB * exp(lambdaC * age_grid))/3
-  cat("alt lambda length\n")
-  cat(length(alt_lambda))
+  alt_lambda = (1.5*lambdaA - 0.5*lambdaB * exp(1.25*lambdaC * age_grid))
   # all seems OK with this simulation
   congruent_sim = congruent_hbds_model(age_grid = age_grid, PSR=sim_true$PSR, PDR=sim_true$PDR, lambda_psi=sim_true$lambda_psi, lambda=alt_lambda)
-  cat("pre-check\n")
-  # str(congruent_sim)
-  if(!(congruent_sim$success)){ 
+  if(!(congruent_sim$success)){
+    cat("Congruent simulation failed\n")
+    cat(congruent_sim$error)
     return(list(FALSE))
   }
   if(!(congruent_sim$valid)){
+    cat("Congruent scenario invalid\n")
     return(list(FALSE))
   }
   # simulate deterministic model
@@ -2376,7 +2043,6 @@ generate_first_tree <- function(situation, age_grid, lambda, mu, psi){
   if(!c_true$success){
     return(list(FALSE))
   }
-  cat("pass next\n")
   str(c_true)
   return(list(TRUE, tree_gen, sim_true, congruent_sim, c_true, properties))
   
@@ -2388,24 +2054,24 @@ generate_first_tree <- function(situation, age_grid, lambda, mu, psi){
 
 
 ENSEMBLE_HBD_SCENARIOS=list(
-  # list(	name					= "OU",
-  #       type 					= "OU", # possible options are 'OU' and 'exp'
-  #       include					= TRUE,
-  #       time_units				= "year",
-  #       lambda_relaxation_rate	= function(){ runif(n=1, min=0.05, max=0.2) }, 	# random number generator for the OU relaxation rate of lambda
-  #       lambda_stationary_mean	= function(){ runif(n=1, min=1, max=10) }, 		# random number generator for the OU stationary expectation of lambda
-  #       lambda_stationary_rstd	= function(){ return(0.5) }, 					# random number generator for the OU relative std of lambda
-  #       mu_relaxation_rate		= function(){ runif(n=1, min=0.05, max=0.2) }, 	# random number generator for the OU relaxation rate of mu
-  #       epsilon_stationary_mean	= function(){ runif(n=1, min=0.1, max=1) }, 	# random number generator for epsilon:=mu_stationary_mean/lambda_stationary_mean
-  #       mu_stationary_rstd		= function(){ return(0.5) }, 					# random number generator for the OU relative std of mu
-  #       psi_relaxation_rate		= function(){ runif(n=1, min=0.05, max=0.2) }, 	# random number generator for the OU relaxation rate of psi
-  #       psi_stationary_mean		= function(){ exp(runif(n=1, min=log(0.01), max=log(1))) },	# random number generator for the OU stationary expectation of psi
-  #       psi_stationary_rstd		= function(){ return(0.5) }, 					# random number generator for the OU relative std of psi
-  #       max_time				= 10, # duration of a simulation, in years
-  #       random_seed				= 1234,
-  #       fitting_grid_size		= 2, # range of grid sizes to consider when fitting skyline or piecewise linear models. The optimal grid size will be determined via AIC.
-  #       fit_skyline				= TRUE,  # whether to fit skyline (piecewise constant) models to the simulated trees
-  #       fit_plinear				= FALSE) # , # whether to fit piecewise linear models to the simulated trees
+  list(	name					= "OU",
+        type 					= "OU", # possible options are 'OU' and 'exp'
+        include					= TRUE,
+        time_units				= "year",
+        lambda_relaxation_rate	= function(){ runif(n=1, min=0.05, max=0.2) }, 	# random number generator for the OU relaxation rate of lambda
+        lambda_stationary_mean	= function(){ runif(n=1, min=1, max=10) }, 		# random number generator for the OU stationary expectation of lambda
+        lambda_stationary_rstd	= function(){ return(0.5) }, 					# random number generator for the OU relative std of lambda
+        mu_relaxation_rate		= function(){ runif(n=1, min=0.05, max=0.2) }, 	# random number generator for the OU relaxation rate of mu
+        epsilon_stationary_mean	= function(){ runif(n=1, min=0.1, max=1) }, 	# random number generator for epsilon:=mu_stationary_mean/lambda_stationary_mean
+        mu_stationary_rstd		= function(){ return(0.5) }, 					# random number generator for the OU relative std of mu
+        psi_relaxation_rate		= function(){ runif(n=1, min=0.05, max=0.2) }, 	# random number generator for the OU relaxation rate of psi
+        psi_stationary_mean		= function(){ exp(runif(n=1, min=log(0.01), max=log(1))) },	# random number generator for the OU stationary expectation of psi
+        psi_stationary_rstd		= function(){ return(0.5) }, 					# random number generator for the OU relative std of psi
+        max_time				= 10, # duration of a simulation, in years
+        random_seed				= 1010,
+        fitting_grid_size		= 11, # range of grid sizes to consider when fitting skyline or piecewise linear models. The optimal grid size will be determined via AIC.
+        fit_skyline				= TRUE,  # whether to fit skyline (piecewise constant) models to the simulated trees
+        fit_plinear				= TRUE), # , # whether to fit piecewise linear models to the simulated trees
   list(	name					= "exp",
         type					= "exp",
         include					= TRUE,
@@ -2420,11 +2086,12 @@ ENSEMBLE_HBD_SCENARIOS=list(
         psi_start				= function(){ exp(runif(n=1, min=log(0.01), max=log(1))) },
         psi_end					= function(){ exp(runif(n=1, min=log(0.01), max=log(1))) },
         max_time				= 10,
-        random_seed				= 1234,
+        random_seed				= 1010,
         fitting_grid_size		= 11, #11 # (grid size - 1) should be factor of age_grid size. i.e. grid size of 11 for age_grid size of 1000
         fit_skyline				= FALSE,
         fit_plinear				= TRUE)
 )
+
 
 for(e in seq_len(length(ENSEMBLE_HBD_SCENARIOS))){
   scenario = ENSEMBLE_HBD_SCENARIOS[[e]]
@@ -2452,8 +2119,8 @@ for(e in seq_len(length(ENSEMBLE_HBD_SCENARIOS))){
                             true_slope_removal_rate				= rep(NA, times=ENSEMBLE_HBD_FITTING_NSIMS),
                             true_slope_sampling_proportion		= rep(NA, times=ENSEMBLE_HBD_FITTING_NSIMS),
                             true_slope_net_growth_rate			= rep(NA, times=ENSEMBLE_HBD_FITTING_NSIMS),
-                            true_slope_branching_density		= rep(NA, times=ENSEMBLE_HBD_FITTING_NSIMS),
-                            true_slope_deterministic_branching_density = rep(NA, times=ENSEMBLE_HBD_FITTING_NSIMS),
+                            # true_slope_branching_density		= rep(NA, times=ENSEMBLE_HBD_FITTING_NSIMS),
+                            # true_slope_deterministic_branching_density = rep(NA, times=ENSEMBLE_HBD_FITTING_NSIMS),
                             # true_slope_deterministic_sampling_density = rep(NA, times=ENSEMBLE_HBD_FITTING_NSIMS),
                             # true_slope_sampling_density			= rep(NA, times=ENSEMBLE_HBD_FITTING_NSIMS),
                             true_mean_lambda					= rep(NA, times=ENSEMBLE_HBD_FITTING_NSIMS),
@@ -2463,9 +2130,9 @@ for(e in seq_len(length(ENSEMBLE_HBD_SCENARIOS))){
                             true_mean_removal_rate				= rep(NA, times=ENSEMBLE_HBD_FITTING_NSIMS),
                             true_mean_sampling_proportion		= rep(NA, times=ENSEMBLE_HBD_FITTING_NSIMS),
                             true_mean_net_growth_rate			= rep(NA, times=ENSEMBLE_HBD_FITTING_NSIMS),
-                            true_mean_branching_density			= rep(NA, times=ENSEMBLE_HBD_FITTING_NSIMS),
-                            true_mean_deterministic_branching_density = rep(NA, times=ENSEMBLE_HBD_FITTING_NSIMS),
-                            true_mean_deterministic_sampling_density = rep(NA, times=ENSEMBLE_HBD_FITTING_NSIMS),
+                            # true_mean_branching_density			= rep(NA, times=ENSEMBLE_HBD_FITTING_NSIMS),
+                            # true_mean_deterministic_branching_density = rep(NA, times=ENSEMBLE_HBD_FITTING_NSIMS),
+                            # true_mean_deterministic_sampling_density = rep(NA, times=ENSEMBLE_HBD_FITTING_NSIMS),
                             # true_mean_sampling_density			= rep(NA, times=ENSEMBLE_HBD_FITTING_NSIMS),
                             skyline_Ngrid						= rep(NA, times=ENSEMBLE_HBD_FITTING_NSIMS),
                             # skyline_loglikelihood				= rep(NA, times=ENSEMBLE_HBD_FITTING_NSIMS),
@@ -2481,9 +2148,9 @@ for(e in seq_len(length(ENSEMBLE_HBD_SCENARIOS))){
                             skyline_net_growth_rate_R2			= rep(NA, times=ENSEMBLE_HBD_FITTING_NSIMS),
                             # skyline_total_diversity_R2			= rep(NA, times=ENSEMBLE_HBD_FITTING_NSIMS),
                             skyline_nLTT_R2						= rep(NA, times=ENSEMBLE_HBD_FITTING_NSIMS),
-                            skyline_branching_density_R2		= rep(NA, times=ENSEMBLE_HBD_FITTING_NSIMS),
+                            # skyline_branching_density_R2		= rep(NA, times=ENSEMBLE_HBD_FITTING_NSIMS),
                             # skyline_sampling_density_R2			= rep(NA, times=ENSEMBLE_HBD_FITTING_NSIMS),
-                            skyline_deterministic_branching_density_R2		= rep(NA, times=ENSEMBLE_HBD_FITTING_NSIMS),
+                            # skyline_deterministic_branching_density_R2		= rep(NA, times=ENSEMBLE_HBD_FITTING_NSIMS),
                             # skyline_deterministic_sampling_density_R2			= rep(NA, times=ENSEMBLE_HBD_FITTING_NSIMS),
                             skyline_lambda_MMNE					= rep(NA, times=ENSEMBLE_HBD_FITTING_NSIMS),
                             skyline_mu_MMNE						= rep(NA, times=ENSEMBLE_HBD_FITTING_NSIMS),
@@ -2494,8 +2161,8 @@ for(e in seq_len(length(ENSEMBLE_HBD_SCENARIOS))){
                             # skyline_total_diversity_MMNE		= rep(NA, times=ENSEMBLE_HBD_FITTING_NSIMS),
                             skyline_net_growth_rate_MMNE		= rep(NA, times=ENSEMBLE_HBD_FITTING_NSIMS),
                             skyline_nLTT_MMNE					= rep(NA, times=ENSEMBLE_HBD_FITTING_NSIMS),
-                            skyline_branching_density_MMNE		= rep(NA, times=ENSEMBLE_HBD_FITTING_NSIMS),
-                            skyline_deterministic_branching_density_MMNE = rep(NA, times=ENSEMBLE_HBD_FITTING_NSIMS),
+                            # skyline_branching_density_MMNE		= rep(NA, times=ENSEMBLE_HBD_FITTING_NSIMS),
+                            # skyline_deterministic_branching_density_MMNE = rep(NA, times=ENSEMBLE_HBD_FITTING_NSIMS),
                             # skyline_deterministic_sampling_density_MMNE = rep(NA, times=ENSEMBLE_HBD_FITTING_NSIMS),
                             # skyline_sampling_density_MMNE		= rep(NA, times=ENSEMBLE_HBD_FITTING_NSIMS),
                             skyline_slope_lambda				= rep(NA, times=ENSEMBLE_HBD_FITTING_NSIMS),
@@ -2505,9 +2172,9 @@ for(e in seq_len(length(ENSEMBLE_HBD_SCENARIOS))){
                             skyline_slope_removal_rate			= rep(NA, times=ENSEMBLE_HBD_FITTING_NSIMS),
                             skyline_slope_sampling_proportion	= rep(NA, times=ENSEMBLE_HBD_FITTING_NSIMS),
                             skyline_slope_net_growth_rate		= rep(NA, times=ENSEMBLE_HBD_FITTING_NSIMS),
-                            skyline_slope_branching_density		= rep(NA, times=ENSEMBLE_HBD_FITTING_NSIMS),
+                            # skyline_slope_branching_density		= rep(NA, times=ENSEMBLE_HBD_FITTING_NSIMS),
                             # skyline_slope_sampling_density		= rep(NA, times=ENSEMBLE_HBD_FITTING_NSIMS),
-                            skyline_slope_deterministic_branching_density = rep(NA, times=ENSEMBLE_HBD_FITTING_NSIMS),
+                            # skyline_slope_deterministic_branching_density = rep(NA, times=ENSEMBLE_HBD_FITTING_NSIMS),
                             # skyline_slope_deterministic_sampling_density = rep(NA, times=ENSEMBLE_HBD_FITTING_NSIMS),
                             skyline_mean_lambda					= rep(NA, times=ENSEMBLE_HBD_FITTING_NSIMS),
                             skyline_mean_mu						= rep(NA, times=ENSEMBLE_HBD_FITTING_NSIMS),
@@ -2516,8 +2183,8 @@ for(e in seq_len(length(ENSEMBLE_HBD_SCENARIOS))){
                             skyline_mean_removal_rate			= rep(NA, times=ENSEMBLE_HBD_FITTING_NSIMS),
                             skyline_mean_sampling_proportion	= rep(NA, times=ENSEMBLE_HBD_FITTING_NSIMS),
                             skyline_mean_net_growth_rate		= rep(NA, times=ENSEMBLE_HBD_FITTING_NSIMS),
-                            skyline_mean_branching_density		= rep(NA, times=ENSEMBLE_HBD_FITTING_NSIMS),
-                            skyline_mean_deterministic_branching_density = rep(NA, times=ENSEMBLE_HBD_FITTING_NSIMS),
+                            # skyline_mean_branching_density		= rep(NA, times=ENSEMBLE_HBD_FITTING_NSIMS),
+                            # skyline_mean_deterministic_branching_density = rep(NA, times=ENSEMBLE_HBD_FITTING_NSIMS),
                             # skyline_mean_deterministic_sampling_density = rep(NA, times=ENSEMBLE_HBD_FITTING_NSIMS),
                             # skyline_mean_sampling_density		= rep(NA, times=ENSEMBLE_HBD_FITTING_NSIMS),
                             skyline_PedgeKS						= rep(NA, times=ENSEMBLE_HBD_FITTING_NSIMS), # P-value of Kolmogorov-Smirnov test of edge lengths
@@ -2537,8 +2204,8 @@ for(e in seq_len(length(ENSEMBLE_HBD_SCENARIOS))){
                             plinear_sampling_proportion_R2		= rep(NA, times=ENSEMBLE_HBD_FITTING_NSIMS),
                             plinear_net_growth_rate_R2			= rep(NA, times=ENSEMBLE_HBD_FITTING_NSIMS),
                             plinear_nLTT_R2						= rep(NA, times=ENSEMBLE_HBD_FITTING_NSIMS),
-                            plinear_branching_density_R2		= rep(NA, times=ENSEMBLE_HBD_FITTING_NSIMS),
-                            plinear_deterministic_branching_density_R2 = rep(NA, times=ENSEMBLE_HBD_FITTING_NSIMS),
+                            # plinear_branching_density_R2		= rep(NA, times=ENSEMBLE_HBD_FITTING_NSIMS),
+                            # plinear_deterministic_branching_density_R2 = rep(NA, times=ENSEMBLE_HBD_FITTING_NSIMS),
                             # plinear_deterministic_sampling_density_R2 = rep(NA, times=ENSEMBLE_HBD_FITTING_NSIMS),
                             # plinear_sampling_density_R2			= rep(NA, times=ENSEMBLE_HBD_FITTING_NSIMS),
                             # plinear_total_diversity_R2			= rep(NA, times=ENSEMBLE_HBD_FITTING_NSIMS),
@@ -2551,8 +2218,8 @@ for(e in seq_len(length(ENSEMBLE_HBD_SCENARIOS))){
                             plinear_net_growth_rate_MMNE		= rep(NA, times=ENSEMBLE_HBD_FITTING_NSIMS),
                             plinear_total_diversity_MMNE		= rep(NA, times=ENSEMBLE_HBD_FITTING_NSIMS),
                             plinear_nLTT_MMNE					= rep(NA, times=ENSEMBLE_HBD_FITTING_NSIMS),
-                            plinear_branching_density_MMNE		= rep(NA, times=ENSEMBLE_HBD_FITTING_NSIMS),
-                            plinear_deterministic_branching_density_MMNE = rep(NA, times=ENSEMBLE_HBD_FITTING_NSIMS),
+                            # plinear_branching_density_MMNE		= rep(NA, times=ENSEMBLE_HBD_FITTING_NSIMS),
+                            # plinear_deterministic_branching_density_MMNE = rep(NA, times=ENSEMBLE_HBD_FITTING_NSIMS),
                             # plinear_deterministic_sampling_density_MMNE = rep(NA, times=ENSEMBLE_HBD_FITTING_NSIMS),
                             # plinear_sampling_density_MMNE		= rep(NA, times=ENSEMBLE_HBD_FITTING_NSIMS),
                             plinear_slope_lambda				= rep(NA, times=ENSEMBLE_HBD_FITTING_NSIMS),
@@ -2562,8 +2229,8 @@ for(e in seq_len(length(ENSEMBLE_HBD_SCENARIOS))){
                             plinear_slope_removal_rate			= rep(NA, times=ENSEMBLE_HBD_FITTING_NSIMS),
                             plinear_slope_sampling_proportion	= rep(NA, times=ENSEMBLE_HBD_FITTING_NSIMS),
                             plinear_slope_net_growth_rate		= rep(NA, times=ENSEMBLE_HBD_FITTING_NSIMS),
-                            plinear_slope_branching_density		= rep(NA, times=ENSEMBLE_HBD_FITTING_NSIMS),
-                            plinear_slope_deterministic_branching_density		= rep(NA, times=ENSEMBLE_HBD_FITTING_NSIMS),
+                            # plinear_slope_branching_density		= rep(NA, times=ENSEMBLE_HBD_FITTING_NSIMS),
+                            # plinear_slope_deterministic_branching_density		= rep(NA, times=ENSEMBLE_HBD_FITTING_NSIMS),
                             # plinear_slope_deterministic_sampling_density		= rep(NA, times=ENSEMBLE_HBD_FITTING_NSIMS),
                             # plinear_slope_sampling_density		= rep(NA, times=ENSEMBLE_HBD_FITTING_NSIMS),
                             plinear_mean_lambda					= rep(NA, times=ENSEMBLE_HBD_FITTING_NSIMS),
@@ -2573,20 +2240,24 @@ for(e in seq_len(length(ENSEMBLE_HBD_SCENARIOS))){
                             plinear_mean_removal_rate			= rep(NA, times=ENSEMBLE_HBD_FITTING_NSIMS),
                             plinear_mean_sampling_proportion	= rep(NA, times=ENSEMBLE_HBD_FITTING_NSIMS),
                             plinear_mean_net_growth_rate		= rep(NA, times=ENSEMBLE_HBD_FITTING_NSIMS),
-                            plinear_mean_branching_density		= rep(NA, times=ENSEMBLE_HBD_FITTING_NSIMS),
-                            plinear_mean_deterministic_branching_density		= rep(NA, times=ENSEMBLE_HBD_FITTING_NSIMS),
+                            # plinear_mean_branching_density		= rep(NA, times=ENSEMBLE_HBD_FITTING_NSIMS),
+                            # plinear_mean_deterministic_branching_density		= rep(NA, times=ENSEMBLE_HBD_FITTING_NSIMS),
                             # plinear_mean_deterministic_sampling_density		= rep(NA, times=ENSEMBLE_HBD_FITTING_NSIMS),
                             # plinear_mean_sampling_densisty		= rep(NA, times=ENSEMBLE_HBD_FITTING_NSIMS),
                             plinear_PedgeKS						= rep(NA, times=ENSEMBLE_HBD_FITTING_NSIMS),
                             plinear_PtipKS						= rep(NA, times=ENSEMBLE_HBD_FITTING_NSIMS),
                             plinear_PnodeKS						= rep(NA, times=ENSEMBLE_HBD_FITTING_NSIMS))
   for(sim in seq_len(ENSEMBLE_HBD_FITTING_NSIMS)){
+    if(scenario$type=="OU" & INCLUDE_OU == FALSE){
+      next
+    }
     cat2(sprintf("  Simulation %d (%s)..\n",sim,scenario$name))
     sim_dir=sprintf("%s/individual_simulations/sim_%d",scenario_dir,sim)
     Nsim_attempts = 0
     
     while(TRUE){
-      kappas = c(1,0.5) # 0
+      # Which retention probabilities to use, in addition to zero.
+      kappas = c(1,0.5)
       Nsim_attempts = Nsim_attempts + 1
       # simulate random lambda & mu & psi time series
       if(scenario$type=="OU"){
@@ -2602,19 +2273,19 @@ for(e in seq_len(length(ENSEMBLE_HBD_SCENARIOS))){
         mu_stationary_rstd 		= scenario$mu_stationary_rstd()
         series_times  			= seq(from=0,to=scenario$max_time,length.out=20)
         # generate profiles of lambda, mu, psi
-        series_lambda = generate_OU_time_series(	times 			= series_times, #castor:::
+        series_lambda = generate_OU_time_series(	times 			= series_times,
                                                           start_value		= lambda_stationary_mean,
                                                           stationary_mean = lambda_stationary_mean,
                                                           stationary_std	= lambda_stationary_rstd*lambda_stationary_mean,
                                                           decay_rate		= lambda_relaxation_rate,
                                                           constrain_min	= 0.1*lambda_stationary_mean)$values
-        series_mu = generate_OU_time_series(	times 			= series_times, #castor:::
+        series_mu = generate_OU_time_series(	times 			= series_times,
                                                       start_value		= mu_stationary_mean,
                                                       stationary_mean = mu_stationary_mean,
                                                       stationary_std	= mu_stationary_rstd*mu_stationary_mean,
                                                       decay_rate		= mu_relaxation_rate,
                                                       constrain_min	= 0.1*mu_stationary_mean)$values
-        series_psi = generate_OU_time_series(	times 			= series_times, #castor:::
+        series_psi = generate_OU_time_series(	times 			= series_times,
                                                        start_value		= psi_stationary_mean,
                                                        stationary_mean = psi_stationary_mean,
                                                        stationary_std	= psi_stationary_rstd*psi_stationary_mean,
@@ -2640,55 +2311,54 @@ for(e in seq_len(length(ENSEMBLE_HBD_SCENARIOS))){
         muB 			= (mu_start-mu_end)/(exp(muC*time_start) - exp(muC*time_end))
         muA				= mu_start - muB*exp(muC*time_start)
         # generate profiles of lambda, mu, psi
-        series_times	= seq(from=0,to=scenario$max_time,length.out=1000)
+        series_times	= seq(from=0,to=scenario$max_time,length.out=100)
         series_lambda	= lambdaA + lambdaB * exp(lambdaC * series_times)
         series_mu		= muA + muB * exp(muC * series_times)
         series_psi		= psiA + psiB * exp(psiC * series_times)
       }
-      # generate random tree based on the specific lambda & mu & psi
+      # generate random tree and congruent model based on the specific lambda & mu & psi
       congruent = FALSE
       resultList = generate_first_tree(scenario, series_times, series_lambda, series_mu, series_psi)
       if (!(resultList[[1]])){
         next
       }
+      # Save tree, congruent model and properties so we can access them later.
       first_tree = resultList[[2]]$tree
       df1 = resultList[[3]]
-      # str(df1)
       
       congruent_model = resultList[[4]]
       df2 = resultList[[5]]
       first_properties = resultList[[6]]
       break
     }
-    
+    # Display tree information
     Ntips	 = length(first_tree$tip.label)
     Nnodes = first_tree$Nnode
     cat2(sprintf("    Note: Tree has %d tips, %d nodes, spans %g, Nsim_attempts=%d\n",Ntips,Nnodes,first_properties[[1]],Nsim_attempts))
     dir.create(sim_dir, showWarnings = FALSE, recursive=TRUE)
     write_tree(first_tree, file=sprintf("%s/tree.tre",sim_dir)) 
     congruentSims <- lapply(ls(pattern="df[0-9]+"), function(x) get(x))
+
+    # For both the original and congruent model, generate new trees for each kappa (sampling retention) value.
     for (c in 1:length(congruentSims)){
       currentSim = (congruentSims[c])
       if (length(currentSim) == 1){
         currentSim = currentSim[[1]]
         for (k in 0:length(kappas)){
-          cat("\n\nLAMBDA\n")
-          cat(currentSim$lambda[1000], "\n\n")
           # FBD cases
           if (k > 0){
             SET_KAPPA = kappas[k]
+            # Generate new tree and save resultant properties
             while(TRUE){
-              #              selectedLambda = c(1, seq(from=length(currentSim$lambda)/(scenario$fitting_grid_size-1),to=length(currentSim$lambda),length.out=scenario$fitting_grid_size-1))
-              #              selectedMu = c(1, seq(from=length(currentSim$mu)/(scenario$fitting_grid_size-1),to=length(currentSim$mu),length.out=scenario$fitting_grid_size-1))
-              #              selectedPsi = c(1, seq(from=length(currentSim$psi)/(scenario$fitting_grid_size-1),to=length(currentSim$psi),length.out=scenario$fitting_grid_size-1))
-              
               new_result = generate_new_tree(include_exs=TRUE, scenario, seq_times=currentSim$ages, kappa=SET_KAPPA, lambda=currentSim$lambda, mu=currentSim$mu, psi=currentSim$psi)
               if (!new_result[[1]]){
                 next
               }
-              cat("passed gen new tree\n")
               current_gen = new_result[[2]]$tree
               current_true = new_result[[3]]
+              if (any(is.na(current_true$nLTT))){
+                next
+              }
               str(current_true)
               current_properties = new_result[[4]]
               # str(current_true)
@@ -2703,19 +2373,16 @@ for(e in seq_len(length(ENSEMBLE_HBD_SCENARIOS))){
               # property order: (1) root_age, (2) stem_age, (3) end_age, (4) tree_LTT, (5) age0, (6) tree_LTT0
               current_gen = first_tree
               current_true <- df1 
-              cat("assigning 1\n")
               str(current_true)
               str(df1)
               current_properties = first_properties
             }
             else {
               current_true <- df2
-              cat("assigning 2\n")
               str(current_true)
               str(df2)
             }
           }
-          cat("current gen structure\n")
           str(current_gen)
           fit_results$Ntips[sim] 							= length(current_gen$tip.label)
           fit_results$Nnodes[sim]							= current_gen$Nnode
@@ -2731,11 +2398,6 @@ for(e in seq_len(length(ENSEMBLE_HBD_SCENARIOS))){
           
           fit_results$true_slope_sampling_proportion[sim]	= get_linear_slope(x=current_true$ages, y=current_true$sampling_proportion, include_intercept=TRUE)
           fit_results$true_slope_net_growth_rate[sim]		= get_linear_slope(x=current_true$ages, y=current_true$diversification_rate, include_intercept=TRUE)
-          fit_results$true_slope_branching_density[sim]	= get_linear_slope(x=current_true$ages, y=current_true$branching_density, include_intercept=TRUE)
-          
-          fit_results$true_slope_deterministic_branching_density[sim]	= get_linear_slope(x=current_true$ages, y=current_true$nLTT*current_true$branching_density, include_intercept=TRUE)
-          # fit_results$true_slope_deterministic_sampling_density[sim]	= get_linear_slope(x=current_true$ages, y=current_true$nLTT*current_true$sampling_density, include_intercept=TRUE)
-          # fit_results$true_slope_sampling_density[sim]	= get_linear_slope(x=current_true$ages, y=current_true$sampling_density, include_intercept=TRUE)
           fit_results$true_mean_lambda[sim]				= mean(current_true$lambda, na.rm=TRUE)
           fit_results$true_mean_mu[sim]					= mean(current_true$mu, na.rm=TRUE)
           fit_results$true_mean_psi[sim]					= mean(current_true$psi, na.rm=TRUE)
@@ -2743,10 +2405,6 @@ for(e in seq_len(length(ENSEMBLE_HBD_SCENARIOS))){
           fit_results$true_mean_removal_rate[sim]			= mean(current_true$removal_rate, na.rm=TRUE)
           fit_results$true_mean_sampling_proportion[sim]	= mean(current_true$sampling_proportion, na.rm=TRUE)
           fit_results$true_mean_net_growth_rate[sim]		= mean(current_true$diversification_rate, na.rm=TRUE)
-          fit_results$true_mean_branching_density[sim]	= mean(current_true$branching_density, na.rm=TRUE)
-          # fit_results$true_mean_sampling_density[sim]		= mean(current_true$sampling_density, na.rm=TRUE)
-          fit_results$true_mean_deterministic_branching_density[sim]	= mean(current_true$branching_density*current_true$nLTT, na.rm=TRUE)
-          # fit_results$true_mean_deterministic_sampling_density[sim]		= mean(current_true$sampling_density*current_true$nLTT, na.rm=TRUE)
           
           fit_results_fixed_psi = cbind(fit_results)
           
@@ -2758,7 +2416,7 @@ for(e in seq_len(length(ENSEMBLE_HBD_SCENARIOS))){
           }
           plot_model(	model_name		= sprintf("%s.sim_%d_kappa%s_c%d",scenario$name,sim,formatC(kappa_val, digits = 1, format = "f"),c),
                       sim				= current_true,
-                      plot_maxx		= current_properties[[1]],
+                      plot_maxx		= NULL,
                       plot_basepath	= sprintf("%s/deterministic_simulation_plots/",sim_dir),
                       time_units		= scenario$time_units,
                       verbose			= TRUE,
@@ -2767,42 +2425,41 @@ for(e in seq_len(length(ENSEMBLE_HBD_SCENARIOS))){
           # save deterministic curves of this model
           fout = prepare_output_file(file_path = sprintf("%s/deterministic_simulation.tsv",sim_dir), FALSE, verbose=FALSE, verbose_prefix="  ")
           cat(sprintf("# Deterministic simulation %d of scenario '%s'\n# Generated on: %s\n# Random seed for this model: %d\n",sim,scenario$name,display_date_time,scenario$random_seed), file=fout, append=FALSE)
-          param_names = c("LTT","nLTT","Pmissing","lambda","mu","psi","PDR","IPDR","PSR","Reff","removal_rate","sampling_proportion","diversification_rate","branching_density", "deterministic_branching_density", "lambda_psi")
+          param_names = c("LTT","nLTT","Pmissing","lambda","mu","psi","PDR","IPDR","PSR","Reff","removal_rate","sampling_proportion","diversification_rate", "lambda_psi") #"branching_density", "deterministic_branching_density",
           cat(sprintf("age\t%s\n",paste(param_names,collapse="\t")), file=fout, append=TRUE)
           write.table(cbind(current_true$ages,as.data.frame(do.call(cbind, current_true[param_names]))), file=fout, append=TRUE, sep="\t", row.names=FALSE, col.names=FALSE, quote=FALSE)
           close(fout)
           
+          # Fit piecewise linear models to cases with a generated tree
+          # Firstly, do not set correct rates
+          # Secondly, use correct past sampling rate
+          if(scenario$fit_plinear){
+            str(current_gen)
+            if (!(k == 0 & c == 2)){
+              cat2(sprintf("    Fitting BDS plinear model with one grid size..\n"))
+              present_day_psi = approx(x=current_true$ages,y=current_true$psi,xout=0)$y
+              age_grid = seq(from = 0, to = current_properties[[1]], length.out = scenario$fitting_grid_size)
+              while(TRUE){
+                results = plinear_fit_and_plot(current_true,  current_gen, current_properties, correct_psi=FALSE, SET_KAPPA, fit_results)
+                if(results[[1]]){
+                  fit_results = as.data.frame(results[[2]])
+                  break
+                }
+              }
           
-          # if(scenario$fit_plinear){
-          #   str(current_gen)
-          #   if (!(k == 0 & c == 2)){
-          #     cat2(sprintf("    Fitting BDS plinear model with one grid size..\n"))
-          #     present_day_psi = approx(x=current_true$ages,y=current_true$psi,xout=0)$y
-          #     age_grid = seq(from = 0, to = current_properties[[1]], length.out = scenario$fitting_grid_size)
-          #     cat("before first fit and plot")
-          #     while(TRUE){
-          #       results = plinear_fit_and_plot(current_true,  current_gen, current_properties, correct_psi=FALSE, SET_KAPPA, fit_results)
-          #       if(results[[1]]){
-          #         fit_results = as.data.frame(results[[2]])
-          #         break
-          #       }
-          #     }
-          
-          #     cat("before second fit and plot")
-          #     while(TRUE){
-          #       results = plinear_fit_and_plot(current_true,  current_gen, current_properties, correct_psi=FALSE, SET_KAPPA, fit_results_fixed_psi)
-          #       if(results[[1]]){
-          #         fit_results_fixed_psi = as.data.frame(results[[2]])
-          #         break
-          #       }
-          #     }
-          #   }          
-          # }
+              while(TRUE){
+                results = plinear_fit_and_plot(current_true,  current_gen, current_properties, correct_psi=TRUE, SET_KAPPA, fit_results_fixed_psi)
+                if(results[[1]]){
+                  fit_results_fixed_psi = as.data.frame(results[[2]])
+                  break
+                }
+              }
+            }          
+          }
         }
         
         fit_results = as.data.frame(fit_results)
         fit_results_fixed_psi = as.data.frame(fit_results_fixed_psi)
-        #  str(cbind(fit_results, fit_results_fixed_psi))
         
         cat2(sprintf("Saving results from all simulations of scenario '%s' congruence %s kappa %s..\n",scenario$name, congruent, SET_KAPPA))
         fout = prepare_output_file(file_path = sprintf("%s/all_simulation_results.tsv",scenario_dir), FALSE, verbose=FALSE, verbose_prefix="  ")
@@ -2815,6 +2472,6 @@ for(e in seq_len(length(ENSEMBLE_HBD_SCENARIOS))){
   }
 }
 
-
+          cat("start and end",lambda_start, lambda_end, "\n")
 
 cat2(sprintf("Done. All outputs were written to '%s'\n",output_dir));
