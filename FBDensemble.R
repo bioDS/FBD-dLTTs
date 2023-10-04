@@ -20,7 +20,7 @@ FITTING_STEP_MIN				= 0.001
 FITTING_HOMOGENOUS_GRID			= FALSE
 fitting_Ntips2max_model_runtime = function(Ntips) max(2,Ntips/1e4) # runtime in seconds to allocate for likelihood evaluations during fitting, as a function of tree size
 
-ENSEMBLE_HBD_FITTING_NSIMS 			 	 		 = 2 # number of trees to simulate and fit models to, in each of the categories "exp" and "OU"
+ENSEMBLE_HBD_FITTING_NSIMS 			 	 		 = 15 # number of trees to simulate and fit models to, in each of the categories "exp" and "OU"
 ENSEMBLE_HBD_FITTING_MIN_NTIPS		 	 		 = 10 
 ENSEMBLE_HBD_FITTING_MAX_NTIPS			 		 = 50
 ENSEMBLE_HBD_FITTING_REPEAT_FAILED_TREES 		 = TRUE
@@ -225,6 +225,7 @@ generate_tree_hbds_man = function(max_sampled_tips		= NULL,
 
 # Save parameters for congruent case 1
 set_true_results = function(results_df, sim_true){
+  str(sim_true)
   	results_df$true_slope_lambda[sim]				= get_linear_slope(x=sim_true$ages, y=sim_true$lambda, include_intercept=TRUE)
 		results_df$true_slope_mu[sim]					= get_linear_slope(x=sim_true$ages, y=sim_true$mu, include_intercept=TRUE)
 		results_df$true_slope_psi[sim]					= get_linear_slope(x=sim_true$ages, y=sim_true$psi, include_intercept=TRUE)
@@ -233,7 +234,7 @@ set_true_results = function(results_df, sim_true){
 		results_df$true_slope_sampling_proportion[sim]	= get_linear_slope(x=sim_true$ages, y=sim_true$sampling_proportion, include_intercept=TRUE)
 		results_df$true_slope_net_growth_rate[sim]		= get_linear_slope(x=sim_true$ages, y=sim_true$diversification_rate, include_intercept=TRUE)
 		results_df$true_slope_branching_density[sim]	= get_linear_slope(x=sim_true$ages, y=sim_true$branching_density, include_intercept=TRUE)
-		results_df$true_slope_sampling_density[sim]	= get_linear_slope(x=sim_true$ages, y=sim_true$sampling_density, include_intercept=TRUE)
+		#results_df$true_slope_sampling_density[sim]	= get_linear_slope(x=sim_true$ages, y=sim_true$sampling_density, include_intercept=TRUE)
 		results_df$true_mean_lambda[sim]				= mean(sim_true$lambda, na.rm=TRUE)
 		results_df$true_mean_mu[sim]					= mean(sim_true$mu, na.rm=TRUE)
 		results_df$true_mean_psi[sim]					= mean(sim_true$psi, na.rm=TRUE)
@@ -242,7 +243,7 @@ set_true_results = function(results_df, sim_true){
 		results_df$true_mean_sampling_proportion[sim]	= mean(sim_true$sampling_proportion, na.rm=TRUE)
 		results_df$true_mean_net_growth_rate[sim]		= mean(sim_true$diversification_rate, na.rm=TRUE)
 		results_df$true_mean_branching_density[sim]	= mean(sim_true$branching_density, na.rm=TRUE)
-		results_df$true_mean_sampling_density[sim]		= mean(sim_true$sampling_density, na.rm=TRUE)
+		#results_df$true_mean_sampling_density[sim]		= mean(sim_true$sampling_density, na.rm=TRUE)
     return(results_df)
 }
 
@@ -324,24 +325,26 @@ plinear_fit_and_plot = function(sim_true, tree, properties, correct_psi = FALSE,
   tree_LTT = properties[[4]]
   age0 = properties[[5]]
   tree_LTT0 = properties[[6]]
+
+  grid_to_fit = seq(from = 0, to = properties[[1]], length.out = scenario$fitting_grid_size)
   if (correct_psi == FALSE){
     fixed_psi=NULL
     if(ENSEMBLE_HBD_FITTING_SKYLINE_FIX_PRESENT_DAY_PSI){
-      fixed_psi = rep(NA,length(age_grid))
-      fixed_psi[age_grid<=root_age/1000] = present_day_psi
+      fixed_psi = rep(NA,scenario$fitting_grid_size)
+      fixed_psi[grid_to_fit<=root_age/1000] = present_day_psi
     }
     str(tree)
     fit = fit_hbds_model_on_grid(tree				= tree, #castor:::
                                           root_age 			= root_age,
                                           oldest_age			= root_age,
-                                          age_grid = age_grid,
+                                          age_grid = grid_to_fit,
                                           max_lambda			= 100*max(sim_true$lambda),
                                           min_mu				= 0.01*min(sim_true$mu),
                                           max_mu				= 100*max(sim_true$mu),
                                           min_psi				= 0.01*min(sim_true$psi),
                                           max_psi				= 100*max(sim_true$psi),
                                           fixed_psi			= fixed_psi,
-                                          fixed_kappa			= rep(kappa, length(age_grid)),
+                                          fixed_kappa			= kappa,
                                           splines_degree		= 1,
                                           condition			= FITTING_CONDITIONING,
                                           Ntrials				= FITTING_NTRIALS,
@@ -356,12 +359,12 @@ plinear_fit_and_plot = function(sim_true, tree, properties, correct_psi = FALSE,
     fit = fit_hbds_model_on_grid(tree				= tree, 
                                           root_age 			= root_age,
                                           oldest_age			= root_age,
-                                          age_grid = age_grid,
+                                          age_grid = grid_to_fit,
                                           max_lambda			= 100*max(sim_true$lambda),
                                           min_mu				= 0.01*min(sim_true$mu),
                                           max_mu				= 100*max(sim_true$mu),
                                           fixed_psi			= sim_true$psi[c(1, seq(from=length(sim_true$psi)/(scenario$fitting_grid_size-1),to=length(sim_true$psi),length.out=scenario$fitting_grid_size-1))],
-                                          fixed_kappa			= rep(kappa, length(age_grid)),
+                                          fixed_kappa			= kappa,
                                           splines_degree		= 1,
                                           condition			= FITTING_CONDITIONING,
                                           Ntrials				= FITTING_NTRIALS,
@@ -393,6 +396,7 @@ plinear_fit_and_plot = function(sim_true, tree, properties, correct_psi = FALSE,
         return(list(FALSE))
       }
       results_df = sim_result[[2]]
+      sim_fit = sim_result[[3]]
       cat2(sprintf("    Assessing adequacy of fitted HBDS plinear model..\n"))
       adequacy_age_grid = seq(from=end_age,to=stem_age,length.out=1000)
       adequacy = assess_model_adequacy(	tree 				= tree, 
@@ -1932,7 +1936,7 @@ ENSEMBLE_HBD_SCENARIOS=list(
         psi_stationary_rstd		= function(){ return(0.5) }, 					# random number generator for the OU relative std of psi
         max_time				= 10, # duration of a simulation, in years
         random_seed				= 1010,
-        fitting_grid_size		= 11, # range of grid sizes to consider when fitting skyline or piecewise linear models. The optimal grid size will be determined via AIC.
+        fitting_grid_size		= 21, # range of grid sizes to consider when fitting skyline or piecewise linear models. The optimal grid size will be determined via AIC.
         fit_skyline				= TRUE,  # whether to fit skyline (piecewise constant) models to the simulated trees
         fit_plinear				= TRUE), # , # whether to fit piecewise linear models to the simulated trees
   list(	name					= "exp",
@@ -1950,7 +1954,7 @@ ENSEMBLE_HBD_SCENARIOS=list(
         psi_end					= function(){ exp(runif(n=1, min=log(0.01), max=log(1))) },
         max_time				= 10,
         random_seed				= 1010,
-        fitting_grid_size		= 11, # (grid size - 1) should be factor of age_grid size. i.e. grid size of 11 for age_grid size of 1000
+        fitting_grid_size		= 21, # (grid size - 1) should be factor of age_grid size. i.e. grid size of 11 for age_grid size of 1000
         fit_skyline				= FALSE,
         fit_plinear				= TRUE)
 )
@@ -2048,7 +2052,7 @@ for(e in seq_len(length(ENSEMBLE_HBD_SCENARIOS))){
                                         psi						= series_psi,
                                         kappa					= 0,
                                         splines_degree			= 1,
-                                        no_full_extinction		= TRUE,
+                                        no_full_extinction		= FALSE,
                                         tip_basename			= "tip.")
 			if(!tree_gen$success) next
 			tree	 = tree_gen$tree
@@ -2111,7 +2115,7 @@ for(e in seq_len(length(ENSEMBLE_HBD_SCENARIOS))){
     close(fout)
 
     present_day_psi = approx(x=sim_true$ages,y=sim_true$psi,xout=0)$y
-    age_grid = seq(from = 0, to = properties[[1]], length.out = scenario$fitting_grid_size)
+    # age_grid = seq(from = 0, to = properties[[1]], length.out = scenario$fitting_grid_size)
     # while(TRUE){
       results = plinear_fit_and_plot(sim_true,  tree, properties, correct_psi=FALSE, 0, fit_results)
       if(!(results[[1]])){
@@ -2147,12 +2151,15 @@ for(e in seq_len(length(ENSEMBLE_HBD_SCENARIOS))){
     cat(sprintf("%s\t%s\n",paste(colnames(fit_results),collapse="\t"), paste("fixed_psi",colnames(fit_results),collapse="\t")), file=fout, append=TRUE)
     write.table(cbind(fit_results, fit_results_fixed_psi), file=fout, append=TRUE, sep="\t", row.names=FALSE, col.names=FALSE, quote=FALSE)
     close(fout)
+    cat("closed fout\n")
 
     for (k in 0:length(kappas)){
       kappa = kappas[k]
+      cat("kappa ", kappa, "\n")
       while(TRUE){
         fit_results = blank_df()
         fit_results = set_consistent_df(fit_results)
+        cat("simulating deterministic\n")
         sim_true = simulate_deterministic_hbds(	age_grid		= age_grid,
 										lambda			= rev(approx(x=series_times,y=series_lambda,xout=tree_gen$final_time+end_age-age_grid)$y),
 										mu				= rev(approx(x=series_times,y=series_mu,xout=tree_gen$final_time+end_age-age_grid)$y),
@@ -2164,14 +2171,14 @@ for(e in seq_len(length(ENSEMBLE_HBD_SCENARIOS))){
 										splines_degree	= 1)
         if(!sim_true$success) next
         # all seems OK with this simulation
-        break
         
         fit_results = set_true_results(fit_results, sim_true)
-
+        cat("call sim_plinear\n")
         sim_result = sim_plinear(fit,sim_true,age0,tree_LTT0,kappa, fit_results, fit_dir)
         if(!(sim_result[[1]])){
           next
         }
+        break
       }
       fit_results = sim_result[[2]]
       sim_fit = sim_result[[3]]
@@ -2200,5 +2207,6 @@ for(e in seq_len(length(ENSEMBLE_HBD_SCENARIOS))){
 			
     }
   }
+  break
 }
 cat2(sprintf("Done. All outputs were written to '%s'\n",output_dir));
