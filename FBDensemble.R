@@ -2164,11 +2164,12 @@ for(e in seq_len(length(ENSEMBLE_HBD_SCENARIOS))){
 										lambda			= rev(approx(x=series_times,y=series_lambda,xout=tree_gen$final_time+end_age-age_grid)$y),
 										mu				= rev(approx(x=series_times,y=series_mu,xout=tree_gen$final_time+end_age-age_grid)$y),
 										psi				= rev(approx(x=series_times,y=series_psi,xout=tree_gen$final_time+end_age-age_grid)$y),
-										kappa			= kappa,
+										kappa			= rep(kappa, length(age_grid)),
 									  requested_ages	= seq(from=0,to=root_age,length.out=1000),
 										age0			= age0,
 										LTT0			= tree_LTT0,
-										splines_degree	= 1)
+										splines_degree	= 1)                    
+        str(sim_true)
         if(!sim_true$success) next
         # all seems OK with this simulation
         
