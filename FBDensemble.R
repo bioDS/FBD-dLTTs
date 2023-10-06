@@ -1,3 +1,38 @@
+#!/usr/local/bin/Rscript
+#
+# This R script is an edited version of code provided by Louca et al. for their paper "Fundamental identifiability limits in molecular epidemiology" (2021).
+# Edits (by Kate Truman) were made in order to conduct a similar simulation for FBD trees.
+# Edits are as follows:
+# Only generate one tree type of larger size (175,000 - 200,000 tips)
+# Include extant and extinct tips in generated trees
+# Remove multiple grid sizes and selection via AIC due to technical issues
+# Focus on piecewise linear models only (not also skyline models)
+# Specify set psi as in Louca et al.'s' paper
+# Allow labelling of sampled ancestors in tree output.
+#
+# Original comments from Louca et al.:
+#     This R script is provided as a Supplemental code to the paper:
+#     Louca, S., McLaughlin, A., MacPherson, A., Joy, J.B., Pennell, M.W. (in review as of 2021). Fundamental identifiability limits in molecular epidemiology.
+#     If you want to run a smaller number of simulations, modify the parameter ENSEMBLE_HBD_FITTING_NSIMS below. 
+#     You can also reduce the number of fitting trials per tree, at the cost of fitting accuracy, through the parameter FITTING_NTRIALS.
+#     If you have a machine with many cores, you can utilize those by adjusting the parameter NUMBER_OF_PARALLEL_THREADS.
+#
+#     LICENSE AGREEMENT
+#     - - - - - - - - -
+#     THIS CODE IS PROVIDED BY THE AUTHOR (STILIANOS LOUCA) "AS IS" AND ANY 
+#     EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES 
+#     OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. 
+#     IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT, 
+#     INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, 
+#     PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) 
+#     HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT 
+#     (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS CODE, 
+#     EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+#     - - - - - - - - -
+#
+# Stilianos Louca
+# March 25, 2021
+
 ###################################
 # OPTIONS
 
@@ -57,7 +92,7 @@ options(warn=1) # print warnings as they occur
 ###################################
 # AUXILIARY FUNCTIONS
 
-# generate_tree_hbds function from castor edited to allow for past sample labelling
+# KT: generate_tree_hbds function from castor edited to allow for past sample labelling
 
 # generate a random phylogenetic tree according to a homogenous birth-death-sampling process
 # the speciation, extinction and continuous (Poissonian) sampling rate can each be time-dependent, and there may be additional discrete sampling times included
@@ -223,6 +258,7 @@ generate_tree_hbds_man = function(max_sampled_tips		= NULL,
   
 }
 
+# KT: move repeated calls to function
 # Save parameters for congruent case 1
 set_true_results = function(results_df, sim_true){
   str(sim_true)
@@ -247,6 +283,7 @@ set_true_results = function(results_df, sim_true){
     return(results_df)
 }
 
+# KT: move repeated calls to function
 # Save parameters for congruent case 2
 set_plinear_results = function(results_df, sim_true, sim_fit){
       results_df$plinear_lambda_R2[sim] 					= get_R2(xtrue=sim_true$ages, ytrue=sim_true$lambda, xfit=sim_fit$ages, yfit=sim_fit$lambda)
@@ -282,9 +319,10 @@ set_plinear_results = function(results_df, sim_true, sim_fit){
       return(results_df)
 }
 
-# Simulate deterministic values given specified evolutionary rates.
+# KT: Simulate deterministic values given specified evolutionary rates.
 sim_plinear = function(fit,sim_true,age0,tree_LTT0,kappa, results_df, fit_dir){
-   sim_fit = simulate_deterministic_hbds(	age_grid		= fit$age_grid, #castor::
+  # Calculate deterministic properties of fitted model.
+   sim_fit = simulate_deterministic_hbds(	age_grid		= fit$age_grid, 
                                                    lambda			= fit$param_fitted$lambda,
                                                    mu				= fit$param_fitted$mu,
                                                    psi				= fit$param_fitted$psi,
@@ -297,9 +335,10 @@ sim_plinear = function(fit,sim_true,age0,tree_LTT0,kappa, results_df, fit_dir){
       cat2(sprintf("      WARNING: Simulation failed: %s\n",sim_fit$error))
       return(list(FALSE))
     }else{
-      # str(tree)
+      # Save results
       results_df = set_plinear_results(results_df, sim_true, sim_fit)
       cat2(sprintf("    Plotting fitted HBDS model..\n"))
+      # Comparison plot
       plot_fitted_vs_true_model(	plot_dir			= fit_dir,
                                  case_tag			= "plinear comparison",
                                  subtitle			= NULL,
@@ -316,8 +355,7 @@ sim_plinear = function(fit,sim_true,age0,tree_LTT0,kappa, results_df, fit_dir){
     }
 }
 
-# Fit and plot a piecewise linear model to obtain congruent case 2 given the existing tree from congruent case 1.
-
+# KT: Fit and plot a piecewise linear model to obtain congruent case 2 given the existing tree from congruent case 1.
 plinear_fit_and_plot = function(sim_true, tree, properties, correct_psi = FALSE, kappa, results_df){
   root_age = properties[[1]]
   stem_age = properties[[2]]
@@ -327,6 +365,7 @@ plinear_fit_and_plot = function(sim_true, tree, properties, correct_psi = FALSE,
   tree_LTT0 = properties[[6]]
 
   grid_to_fit = seq(from = 0, to = properties[[1]], length.out = scenario$fitting_grid_size)
+  # Fit parameters on one grid. As the new parameters correspond to the same tree, the second scenario will be congruent to the first.
   if (correct_psi == FALSE){
     fixed_psi=NULL
     if(ENSEMBLE_HBD_FITTING_SKYLINE_FIX_PRESENT_DAY_PSI){
@@ -334,7 +373,7 @@ plinear_fit_and_plot = function(sim_true, tree, properties, correct_psi = FALSE,
       fixed_psi[grid_to_fit<=root_age/1000] = present_day_psi
     }
     str(tree)
-    fit = fit_hbds_model_on_grid(tree				= tree, #castor:::
+    fit = fit_hbds_model_on_grid(tree				= tree,
                                           root_age 			= root_age,
                                           oldest_age			= root_age,
                                           age_grid = grid_to_fit,
@@ -385,6 +424,7 @@ plinear_fit_and_plot = function(sim_true, tree, properties, correct_psi = FALSE,
     }else{
     
       fit_dir = sprintf("%s/fitted_plinear_psi_specified%s",sim_dir, correct_psi)
+      # We no longer need to select the best fit
       # fit = fit$best_fit
       dir.create(fit_dir, showWarnings = FALSE, recursive=TRUE);
       sink(file=sprintf("%s/fit_results.txt",fit_dir)); print(fit); sink(); # save fit results to text file
@@ -1764,7 +1804,8 @@ cat2 = function(message, file=logfile, append=TRUE){
 
 
 
-# Initialise data frame to store model parameters
+# KT: Initialise data frame to store model parameters (repeated code from Louca)
+# AIC grid selection and density parameters are currently not used. The latter cannot currently be calculated for sampled ancestor trees.
 blank_df = function(){
   return(data.frame(	Ntips								= rep(NA, times=ENSEMBLE_HBD_FITTING_NSIMS),
                             Nnodes								= rep(NA, times=ENSEMBLE_HBD_FITTING_NSIMS),
@@ -1908,7 +1949,7 @@ blank_df = function(){
                             plinear_PnodeKS						= rep(NA, times=ENSEMBLE_HBD_FITTING_NSIMS)))
 }
 
-# Save properties kept consistent for all models fitted
+# KT: Save properties kept consistent for all models fitted (repeated code)
 set_consistent_df = function(results_df){
   	results_df$Ntips[sim] 							= Ntips
 		results_df$Nnodes[sim]							= Nnodes
@@ -1974,6 +2015,7 @@ for(e in seq_len(length(ENSEMBLE_HBD_SCENARIOS))){
   cat2(sprintf("  Note: Scenario random seed = %d\n",scenario$random_seed))
   set.seed(scenario$random_seed)
   
+  # Prepare data frame
   fit_results = blank_df()
   for(sim in seq_len(ENSEMBLE_HBD_FITTING_NSIMS)){
     cat2(sprintf("  Simulation %d (%s)..\n",sim,scenario$name))
@@ -2115,8 +2157,7 @@ for(e in seq_len(length(ENSEMBLE_HBD_SCENARIOS))){
     close(fout)
 
     present_day_psi = approx(x=sim_true$ages,y=sim_true$psi,xout=0)$y
-    # age_grid = seq(from = 0, to = properties[[1]], length.out = scenario$fitting_grid_size)
-    # while(TRUE){
+      # Fit congruent models 
       results = plinear_fit_and_plot(sim_true,  tree, properties, correct_psi=FALSE, 0, fit_results)
       if(!(results[[1]])){
         cat2(sprintf("      ERROR: Fitting failed: %s\n",results[[2]]));
@@ -2129,7 +2170,7 @@ for(e in seq_len(length(ENSEMBLE_HBD_SCENARIOS))){
         fit_results = as.data.frame(results[[2]])
         fit = results[[3]]
     # }
-          
+      # Also fit congruent model with correct sampling rate to see if the birth and death rates are also correct.    
       results = plinear_fit_and_plot(sim_true,  tree, properties, correct_psi=TRUE, 0, fit_results_fixed_psi)
       if(!(results[[1]])){
         cat2(sprintf("      ERROR: Fitting failed: %s\n",results[[2]]));
@@ -2151,20 +2192,21 @@ for(e in seq_len(length(ENSEMBLE_HBD_SCENARIOS))){
     cat(sprintf("%s\t%s\n",paste(colnames(fit_results),collapse="\t"), paste("fixed_psi",colnames(fit_results),collapse="\t")), file=fout, append=TRUE)
     write.table(cbind(fit_results, fit_results_fixed_psi), file=fout, append=TRUE, sep="\t", row.names=FALSE, col.names=FALSE, quote=FALSE)
     close(fout)
-    cat("closed fout\n")
 
-    for (k in 0:length(kappas)){
-      kappa = kappas[k]
-      cat("kappa ", kappa, "\n")
+    # For each non-zero retention probability we want to consider, simulate models using the rates from the kappa = 0 case. Plot relevant curves for each model.
+    for (k in 1:length(kappas)){
       while(TRUE){
+        kappa = kappas[k]
+        cat("kappa ", kappa, "\n")
         fit_results = blank_df()
         fit_results = set_consistent_df(fit_results)
         cat("simulating deterministic\n")
+        # Simulate deterministic model using original rates but current retention probability.
         sim_true = simulate_deterministic_hbds(	age_grid		= age_grid,
 										lambda			= rev(approx(x=series_times,y=series_lambda,xout=tree_gen$final_time+end_age-age_grid)$y),
 										mu				= rev(approx(x=series_times,y=series_mu,xout=tree_gen$final_time+end_age-age_grid)$y),
 										psi				= rev(approx(x=series_times,y=series_psi,xout=tree_gen$final_time+end_age-age_grid)$y),
-										kappa			= rep(kappa, length(age_grid)),
+										kappa			= kappa,
 									  requested_ages	= seq(from=0,to=root_age,length.out=1000),
 										age0			= age0,
 										LTT0			= tree_LTT0,
@@ -2175,6 +2217,7 @@ for(e in seq_len(length(ENSEMBLE_HBD_SCENARIOS))){
         
         fit_results = set_true_results(fit_results, sim_true)
         cat("call sim_plinear\n")
+        # Simulate deterministic model using rates under second scenario from kappa = 0 case, but now use current retention probability.
         sim_result = sim_plinear(fit,sim_true,age0,tree_LTT0,kappa, fit_results, fit_dir)
         if(!(sim_result[[1]])){
           next
