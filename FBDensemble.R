@@ -56,8 +56,8 @@ FITTING_HOMOGENOUS_GRID			= FALSE
 fitting_Ntips2max_model_runtime = function(Ntips) max(2,Ntips/1e4) # runtime in seconds to allocate for likelihood evaluations during fitting, as a function of tree size
 
 ENSEMBLE_HBD_FITTING_NSIMS 			 	 		 = 15 # number of trees to simulate and fit models to, in each of the categories "exp" and "OU"
-ENSEMBLE_HBD_FITTING_MIN_NTIPS		 	 		 = 10 
-ENSEMBLE_HBD_FITTING_MAX_NTIPS			 		 = 50
+ENSEMBLE_HBD_FITTING_MIN_NTIPS		 	 		 = 1000 
+ENSEMBLE_HBD_FITTING_MAX_NTIPS			 		 = 5000
 ENSEMBLE_HBD_FITTING_REPEAT_FAILED_TREES 		 = TRUE
 ENSEMBLE_HBD_FITTING_SKYLINE_FIX_PRESENT_DAY_PSI = TRUE
 ENSEMBLE_HBD_FITTING_PLINEAR_FIX_PRESENT_DAY_PSI = TRUE
@@ -269,7 +269,7 @@ set_true_results = function(results_df, sim_true){
 		results_df$true_slope_removal_rate[sim]		= get_linear_slope(x=sim_true$ages, y=sim_true$removal_rate, include_intercept=TRUE)
 		results_df$true_slope_sampling_proportion[sim]	= get_linear_slope(x=sim_true$ages, y=sim_true$sampling_proportion, include_intercept=TRUE)
 		results_df$true_slope_net_growth_rate[sim]		= get_linear_slope(x=sim_true$ages, y=sim_true$diversification_rate, include_intercept=TRUE)
-		results_df$true_slope_branching_density[sim]	= get_linear_slope(x=sim_true$ages, y=sim_true$branching_density, include_intercept=TRUE)
+		#results_df$true_slope_branching_density[sim]	= get_linear_slope(x=sim_true$ages, y=sim_true$branching_density, include_intercept=TRUE)
 		#results_df$true_slope_sampling_density[sim]	= get_linear_slope(x=sim_true$ages, y=sim_true$sampling_density, include_intercept=TRUE)
 		results_df$true_mean_lambda[sim]				= mean(sim_true$lambda, na.rm=TRUE)
 		results_df$true_mean_mu[sim]					= mean(sim_true$mu, na.rm=TRUE)
@@ -278,7 +278,7 @@ set_true_results = function(results_df, sim_true){
 		results_df$true_mean_removal_rate[sim]			= mean(sim_true$removal_rate, na.rm=TRUE)
 		results_df$true_mean_sampling_proportion[sim]	= mean(sim_true$sampling_proportion, na.rm=TRUE)
 		results_df$true_mean_net_growth_rate[sim]		= mean(sim_true$diversification_rate, na.rm=TRUE)
-		results_df$true_mean_branching_density[sim]	= mean(sim_true$branching_density, na.rm=TRUE)
+		# results_df$true_mean_branching_density[sim]	= mean(sim_true$branching_density, na.rm=TRUE)
 		#results_df$true_mean_sampling_density[sim]		= mean(sim_true$sampling_density, na.rm=TRUE)
     return(results_df)
 }
@@ -342,7 +342,7 @@ sim_plinear = function(fit,sim_true,age0,tree_LTT0,kappa, results_df, fit_dir){
       plot_fitted_vs_true_model(	plot_dir			= fit_dir,
                                  case_tag			= "plinear comparison",
                                  subtitle			= NULL,
-                                 true_model_name	 	= sprintf("%s.sim_%d%d",scenario$name,sim,kappa),
+                                 true_model_name	 	= sprintf("%s.sim_%d%s",scenario$name,sim,formatC(kappa, digits = 1, format = "f")),
                                  fit_model_name		= "plinear",
                                  sim_true			= sim_true,
                                  sim_fit				= sim_fit,
@@ -366,6 +366,7 @@ plinear_fit_and_plot = function(sim_true, tree, properties, correct_psi = FALSE,
 
   grid_to_fit = seq(from = 0, to = properties[[1]], length.out = scenario$fitting_grid_size)
   # Fit parameters on one grid. As the new parameters correspond to the same tree, the second scenario will be congruent to the first.
+  # Note that we do not specify a minimum lambda or mu value when fitting as we allow these to be greater or equal to zero.
   if (correct_psi == FALSE){
     fixed_psi=NULL
     if(ENSEMBLE_HBD_FITTING_SKYLINE_FIX_PRESENT_DAY_PSI){
@@ -378,7 +379,6 @@ plinear_fit_and_plot = function(sim_true, tree, properties, correct_psi = FALSE,
                                           oldest_age			= root_age,
                                           age_grid = grid_to_fit,
                                           max_lambda			= 100*max(sim_true$lambda),
-                                          min_mu				= 0.01*min(sim_true$mu),
                                           max_mu				= 100*max(sim_true$mu),
                                           min_psi				= 0.01*min(sim_true$psi),
                                           max_psi				= 100*max(sim_true$psi),
@@ -400,7 +400,6 @@ plinear_fit_and_plot = function(sim_true, tree, properties, correct_psi = FALSE,
                                           oldest_age			= root_age,
                                           age_grid = grid_to_fit,
                                           max_lambda			= 100*max(sim_true$lambda),
-                                          min_mu				= 0.01*min(sim_true$mu),
                                           max_mu				= 100*max(sim_true$mu),
                                           fixed_psi			= sim_true$psi[c(1, seq(from=length(sim_true$psi)/(scenario$fitting_grid_size-1),to=length(sim_true$psi),length.out=scenario$fitting_grid_size-1))],
                                           fixed_kappa			= kappa,
@@ -449,6 +448,7 @@ plinear_fit_and_plot = function(sim_true, tree, properties, correct_psi = FALSE,
                                         Nthreads			= NUMBER_OF_PARALLEL_THREADS)
       if(!adequacy$success){
         cat2(sprintf("      WARNING: Adequacy test failed: %s\n",adequacy$error))
+        return(list(FALSE))
       }else{
         cat2(sprintf("      --> PnodeKS = %g, PedgeKS = %g, PtipKS = %g\n",adequacy$PnodeKS,adequacy$PedgeKS,adequacy$PtipKS))
         results_df$plinear_PedgeKS[sim] = adequacy$PedgeKS
@@ -1891,7 +1891,7 @@ blank_df = function(){
                             skyline_PtipKS						= rep(NA, times=ENSEMBLE_HBD_FITTING_NSIMS), # P-value of Kolmogorov-Smirnov test of tip ages
                             skyline_PnodeKS						= rep(NA, times=ENSEMBLE_HBD_FITTING_NSIMS), # P-value of Kolmogorov-Smirnov test of node ages
                             # Parameters not needed for one grid size
-                            # plinear_Ngrid						= rep(NA, times=ENSEMBLE_HBD_FITTING_NSIMS),
+                            plinear_Ngrid						= rep(NA, times=ENSEMBLE_HBD_FITTING_NSIMS),
                             # plinear_loglikelihood				= rep(NA, times=ENSEMBLE_HBD_FITTING_NSIMS),
                             # plinear_AIC							= rep(NA, times=ENSEMBLE_HBD_FITTING_NSIMS),
                             plinear_Niterations					= rep(NA, times=ENSEMBLE_HBD_FITTING_NSIMS),
@@ -2227,14 +2227,14 @@ for(e in seq_len(length(ENSEMBLE_HBD_SCENARIOS))){
       fit_results = sim_result[[2]]
       sim_fit = sim_result[[3]]
       
-      plot_model(	model_name		= sprintf("%s.sim_%d_kappa_%d_c1",scenario$name,sim,formatC(kappa, digits = 1, format = "f")),
+      plot_model(	model_name		= sprintf("%s.sim_%d_kappa_%s_c1",scenario$name,sim,formatC(kappa, digits = 1, format = "f")),
                 sim				= sim_true,
                 plot_maxx		= NULL,
                 plot_basepath	= sprintf("%s/deterministic_simulation_plots/",sim_dir),
                 time_units		= scenario$time_units,
                 verbose			= TRUE,
                 verbose_prefix	= "      ")			
-      plot_model(	model_name		= sprintf("%s.sim_%d_kappa_%d_c2",scenario$name,sim,formatC(kappa, digits = 1, format = "f")),
+      plot_model(	model_name		= sprintf("%s.sim_%d_kappa_%s_c2",scenario$name,sim,formatC(kappa, digits = 1, format = "f")),
                 sim				= sim_fit,
                 plot_maxx		= NULL,
                 plot_basepath	= sprintf("%s/deterministic_simulation_plots/",sim_dir),
