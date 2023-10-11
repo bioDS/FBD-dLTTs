@@ -40,7 +40,7 @@ REQUIRED_PACKAGES	= c("Rcpp", "nloptr", "ape", "castor") # list any required pac
 OUTPUT_DIR			= "output"
 
 
-NUMBER_OF_PARALLEL_THREADS 	= 35 	# number of parallel threads to use for fitting
+NUMBER_OF_PARALLEL_THREADS 	= 50 	# number of parallel threads to use for fitting
 MODEL_ADEQUACY_NBOOTSTRAPS 	= 1000 	# number of bootstraps to use for evaluating the adequacy of fitted models. 
 MODEL_ADEQUACY_MAX_RUNTIME	= 10 	# maximum runtime (seconds) per bootstrap simulation when testing model adequacy
 
@@ -2181,10 +2181,38 @@ for(e in seq_len(length(ENSEMBLE_HBD_SCENARIOS))){
 				}
       }
         fit_results_fixed_psi = as.data.frame(results[[2]])
+        fit = results[[3]]
     #}
     fit_results = as.data.frame(fit_results)
     fit_results_fixed_psi = as.data.frame(fit_results_fixed_psi)
     fit_dir = results[[4]]
+
+    first_fit = simulate_deterministic_hbds(	age_grid		= fit$age_grid, 
+                                                   lambda			= fit$param_fitted$lambda,
+                                                   mu				= fit$param_fitted$mu,
+                                                   psi				= fit$param_fitted$psi,
+                                                   kappa			= 0,
+                                                   splines_degree	= 1,
+                                                   requested_ages	= sim_true$ages,
+                                                   age0			= age0,
+                                                   LTT0			= tree_LTT0)
+
+    plot_model(	model_name		= sprintf("%s.sim_%d_kappa_0_c2",scenario$name,sim),
+                sim				= sim_true,
+                plot_maxx		= NULL,
+                plot_basepath	= sprintf("%s/deterministic_simulation_plots/",sim_dir),
+                time_units		= scenario$time_units,
+                verbose			= TRUE,
+                verbose_prefix	= "      ")			
+          
+    # save deterministic curves of this model
+    fout = prepare_output_file(file_path = sprintf("%s/deterministic_simulation.tsv",sim_dir), FALSE, verbose=FALSE, verbose_prefix="  ")
+    cat(sprintf("# Deterministic simulation %d of scenario '%s'\n# Generated on: %s\n# Random seed for this model: %d\n",sim,scenario$name,display_date_time,scenario$random_seed), file=fout, append=FALSE)
+    param_names = c("LTT","nLTT","Pmissing","lambda","mu","psi","PDR","IPDR","PSR","Reff","removal_rate","sampling_proportion","diversification_rate", "lambda_psi") #"branching_density", "deterministic_branching_density",
+    cat(sprintf("age\t%s\n",paste(param_names,collapse="\t")), file=fout, append=TRUE)
+    write.table(cbind(first_fit$ages,as.data.frame(do.call(cbind, first_fit[param_names]))), file=fout, append=TRUE, sep="\t", row.names=FALSE, col.names=FALSE, quote=FALSE)
+    close(fout)
+
         
     cat2(sprintf("Saving results from all simulations of scenario '%s' kappa %s..\n",scenario$name, 0))
     fout = prepare_output_file(file_path = sprintf("%s/all_simulation_results.tsv",scenario_dir), FALSE, verbose=FALSE, verbose_prefix="  ")
