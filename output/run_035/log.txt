@@ -1,0 +1,209 @@
+Log of HBDS workflow
+Generated on: October 15, 2023, 16:37 (Pacific/Auckland)
+Note: Skipping ensemble simulations under scenario 'OU', as requested
+Simulating trees under scenario 'exp' (of type 'exp')..
+  Note: Scenario random seed = 1234
+  Simulation 1 (exp)..
+    Note: Tree has 200000 tips, 199999 nodes, spans 9.33886, Nsim_attempts=2
+      Plotting LTT of model 'exp.sim_1_kappa_0_c1'..
+      Plotting nLTT of model 'exp.sim_1_kappa_0_c1'..
+      Plotting PSR of model 'exp.sim_1_kappa_0_c1'..
+      Plotting PDR of model 'exp.sim_1_kappa_0_c1'..
+      Plotting IPDR of model 'exp.sim_1_kappa_0_c1'..
+      Plotting event density of model 'exp.sim_1_kappa_0_c1'..
+      Plotting Reff of model 'exp.sim_1_kappa_0_c1'..
+      Plotting removal rate of model 'exp.sim_1_kappa_0_c1'..
+      Plotting sampling proportion of model 'exp.sim_1_kappa_0_c1'..
+      Plotting lambda of model 'exp.sim_1_kappa_0_c1'..
+      Plotting psi of model 'exp.sim_1_kappa_0_c1'..
+      Plotting mu of model 'exp.sim_1_kappa_0_c1'..
+  Simulation 2 (exp)..
+    Note: Tree has 200000 tips, 199999 nodes, spans 2.95713, Nsim_attempts=2
+      Plotting LTT of model 'exp.sim_2_kappa_0_c1'..
+      Plotting nLTT of model 'exp.sim_2_kappa_0_c1'..
+      Plotting PSR of model 'exp.sim_2_kappa_0_c1'..
+      Plotting PDR of model 'exp.sim_2_kappa_0_c1'..
+      Plotting IPDR of model 'exp.sim_2_kappa_0_c1'..
+      Plotting event density of model 'exp.sim_2_kappa_0_c1'..
+      Plotting Reff of model 'exp.sim_2_kappa_0_c1'..
+      Plotting removal rate of model 'exp.sim_2_kappa_0_c1'..
+      Plotting sampling proportion of model 'exp.sim_2_kappa_0_c1'..
+      Plotting lambda of model 'exp.sim_2_kappa_0_c1'..
+      Plotting psi of model 'exp.sim_2_kappa_0_c1'..
+      Plotting mu of model 'exp.sim_2_kappa_0_c1'..
+  Simulation 3 (exp)..
+    Note: Tree has 200000 tips, 199999 nodes, spans 1.533, Nsim_attempts=1
+      Plotting LTT of model 'exp.sim_3_kappa_0_c1'..
+      Plotting nLTT of model 'exp.sim_3_kappa_0_c1'..
+      Plotting PSR of model 'exp.sim_3_kappa_0_c1'..
+      Plotting PDR of model 'exp.sim_3_kappa_0_c1'..
+      Plotting IPDR of model 'exp.sim_3_kappa_0_c1'..
+      Plotting event density of model 'exp.sim_3_kappa_0_c1'..
+      Plotting Reff of model 'exp.sim_3_kappa_0_c1'..
+      Plotting removal rate of model 'exp.sim_3_kappa_0_c1'..
+      Plotting sampling proportion of model 'exp.sim_3_kappa_0_c1'..
+      Plotting lambda of model 'exp.sim_3_kappa_0_c1'..
+      Plotting psi of model 'exp.sim_3_kappa_0_c1'..
+      Plotting mu of model 'exp.sim_3_kappa_0_c1'..
+  Simulation 4 (exp)..
+    Note: Tree has 200000 tips, 199999 nodes, spans 3.25543, Nsim_attempts=1
+      Plotting LTT of model 'exp.sim_4_kappa_0_c1'..
+      Plotting nLTT of model 'exp.sim_4_kappa_0_c1'..
+      Plotting PSR of model 'exp.sim_4_kappa_0_c1'..
+      Plotting PDR of model 'exp.sim_4_kappa_0_c1'..
+      Plotting IPDR of model 'exp.sim_4_kappa_0_c1'..
+      Plotting event density of model 'exp.sim_4_kappa_0_c1'..
+      Plotting Reff of model 'exp.sim_4_kappa_0_c1'..
+      Plotting removal rate of model 'exp.sim_4_kappa_0_c1'..
+      Plotting sampling proportion of model 'exp.sim_4_kappa_0_c1'..
+      Plotting lambda of model 'exp.sim_4_kappa_0_c1'..
+      Plotting psi of model 'exp.sim_4_kappa_0_c1'..
+      Plotting mu of model 'exp.sim_4_kappa_0_c1'..
+  Simulation 5 (exp)..
+    Note: Tree has 200000 tips, 199999 nodes, spans 3.63304, Nsim_attempts=2
+      Plotting LTT of model 'exp.sim_5_kappa_0_c1'..
+      Plotting nLTT of model 'exp.sim_5_kappa_0_c1'..
+      Plotting PSR of model 'exp.sim_5_kappa_0_c1'..
+      Plotting PDR of model 'exp.sim_5_kappa_0_c1'..
+      Plotting IPDR of model 'exp.sim_5_kappa_0_c1'..
+      Plotting event density of model 'exp.sim_5_kappa_0_c1'..
+      Plotting Reff of model 'exp.sim_5_kappa_0_c1'..
+      Plotting removal rate of model 'exp.sim_5_kappa_0_c1'..
+      Plotting sampling proportion of model 'exp.sim_5_kappa_0_c1'..
+      Plotting lambda of model 'exp.sim_5_kappa_0_c1'..
+      Plotting psi of model 'exp.sim_5_kappa_0_c1'..
+      Plotting mu of model 'exp.sim_5_kappa_0_c1'..
+  Simulation 6 (exp)..
+    Note: Tree has 200000 tips, 199999 nodes, spans 1.72461, Nsim_attempts=1
+      Plotting LTT of model 'exp.sim_6_kappa_0_c1'..
+      Plotting nLTT of model 'exp.sim_6_kappa_0_c1'..
+      Plotting PSR of model 'exp.sim_6_kappa_0_c1'..
+      Plotting PDR of model 'exp.sim_6_kappa_0_c1'..
+      Plotting IPDR of model 'exp.sim_6_kappa_0_c1'..
+      Plotting event density of model 'exp.sim_6_kappa_0_c1'..
+      Plotting Reff of model 'exp.sim_6_kappa_0_c1'..
+      Plotting removal rate of model 'exp.sim_6_kappa_0_c1'..
+      Plotting sampling proportion of model 'exp.sim_6_kappa_0_c1'..
+      Plotting lambda of model 'exp.sim_6_kappa_0_c1'..
+      Plotting psi of model 'exp.sim_6_kappa_0_c1'..
+      Plotting mu of model 'exp.sim_6_kappa_0_c1'..
+  Simulation 7 (exp)..
+    Note: Tree has 200000 tips, 199999 nodes, spans 3.23716, Nsim_attempts=1
+      Plotting LTT of model 'exp.sim_7_kappa_0_c1'..
+      Plotting nLTT of model 'exp.sim_7_kappa_0_c1'..
+      Plotting PSR of model 'exp.sim_7_kappa_0_c1'..
+      Plotting PDR of model 'exp.sim_7_kappa_0_c1'..
+      Plotting IPDR of model 'exp.sim_7_kappa_0_c1'..
+      Plotting event density of model 'exp.sim_7_kappa_0_c1'..
+      Plotting Reff of model 'exp.sim_7_kappa_0_c1'..
+      Plotting removal rate of model 'exp.sim_7_kappa_0_c1'..
+      Plotting sampling proportion of model 'exp.sim_7_kappa_0_c1'..
+      Plotting lambda of model 'exp.sim_7_kappa_0_c1'..
+      Plotting psi of model 'exp.sim_7_kappa_0_c1'..
+      Plotting mu of model 'exp.sim_7_kappa_0_c1'..
+  Simulation 8 (exp)..
+    Note: Tree has 200000 tips, 199999 nodes, spans 5.82195, Nsim_attempts=2
+      Plotting LTT of model 'exp.sim_8_kappa_0_c1'..
+      Plotting nLTT of model 'exp.sim_8_kappa_0_c1'..
+      Plotting PSR of model 'exp.sim_8_kappa_0_c1'..
+      Plotting PDR of model 'exp.sim_8_kappa_0_c1'..
+      Plotting IPDR of model 'exp.sim_8_kappa_0_c1'..
+      Plotting event density of model 'exp.sim_8_kappa_0_c1'..
+      Plotting Reff of model 'exp.sim_8_kappa_0_c1'..
+      Plotting removal rate of model 'exp.sim_8_kappa_0_c1'..
+      Plotting sampling proportion of model 'exp.sim_8_kappa_0_c1'..
+      Plotting lambda of model 'exp.sim_8_kappa_0_c1'..
+      Plotting psi of model 'exp.sim_8_kappa_0_c1'..
+      Plotting mu of model 'exp.sim_8_kappa_0_c1'..
+  Simulation 9 (exp)..
+    Note: Tree has 200000 tips, 199999 nodes, spans 2.37474, Nsim_attempts=1
+      Plotting LTT of model 'exp.sim_9_kappa_0_c1'..
+      Plotting nLTT of model 'exp.sim_9_kappa_0_c1'..
+      Plotting PSR of model 'exp.sim_9_kappa_0_c1'..
+      Plotting PDR of model 'exp.sim_9_kappa_0_c1'..
+      Plotting IPDR of model 'exp.sim_9_kappa_0_c1'..
+      Plotting event density of model 'exp.sim_9_kappa_0_c1'..
+      Plotting Reff of model 'exp.sim_9_kappa_0_c1'..
+      Plotting removal rate of model 'exp.sim_9_kappa_0_c1'..
+      Plotting sampling proportion of model 'exp.sim_9_kappa_0_c1'..
+      Plotting lambda of model 'exp.sim_9_kappa_0_c1'..
+      Plotting psi of model 'exp.sim_9_kappa_0_c1'..
+      Plotting mu of model 'exp.sim_9_kappa_0_c1'..
+  Simulation 10 (exp)..
+    Note: Tree has 200000 tips, 199999 nodes, spans 3.84566, Nsim_attempts=2
+      Plotting LTT of model 'exp.sim_10_kappa_0_c1'..
+      Plotting nLTT of model 'exp.sim_10_kappa_0_c1'..
+      Plotting PSR of model 'exp.sim_10_kappa_0_c1'..
+      Plotting PDR of model 'exp.sim_10_kappa_0_c1'..
+      Plotting IPDR of model 'exp.sim_10_kappa_0_c1'..
+      Plotting event density of model 'exp.sim_10_kappa_0_c1'..
+      Plotting Reff of model 'exp.sim_10_kappa_0_c1'..
+      Plotting removal rate of model 'exp.sim_10_kappa_0_c1'..
+      Plotting sampling proportion of model 'exp.sim_10_kappa_0_c1'..
+      Plotting lambda of model 'exp.sim_10_kappa_0_c1'..
+      Plotting psi of model 'exp.sim_10_kappa_0_c1'..
+      Plotting mu of model 'exp.sim_10_kappa_0_c1'..
+      Plotting LTT of model 'exp.sim_10_kappa_0_c2'..
+      Plotting nLTT of model 'exp.sim_10_kappa_0_c2'..
+      Plotting PSR of model 'exp.sim_10_kappa_0_c2'..
+      Plotting PDR of model 'exp.sim_10_kappa_0_c2'..
+      Plotting IPDR of model 'exp.sim_10_kappa_0_c2'..
+      Plotting event density of model 'exp.sim_10_kappa_0_c2'..
+      Plotting Reff of model 'exp.sim_10_kappa_0_c2'..
+      Plotting removal rate of model 'exp.sim_10_kappa_0_c2'..
+      Plotting sampling proportion of model 'exp.sim_10_kappa_0_c2'..
+      Plotting lambda of model 'exp.sim_10_kappa_0_c2'..
+      Plotting psi of model 'exp.sim_10_kappa_0_c2'..
+      Plotting mu of model 'exp.sim_10_kappa_0_c2'..
+Saving results from all simulations of scenario 'exp' kappa 0..
+      Plotting LTT of model 'exp.sim_10_kappa_1.0_c1'..
+      Plotting nLTT of model 'exp.sim_10_kappa_1.0_c1'..
+      Plotting PSR of model 'exp.sim_10_kappa_1.0_c1'..
+      Plotting PDR of model 'exp.sim_10_kappa_1.0_c1'..
+      Plotting IPDR of model 'exp.sim_10_kappa_1.0_c1'..
+      Plotting event density of model 'exp.sim_10_kappa_1.0_c1'..
+      Plotting Reff of model 'exp.sim_10_kappa_1.0_c1'..
+      Plotting removal rate of model 'exp.sim_10_kappa_1.0_c1'..
+      Plotting sampling proportion of model 'exp.sim_10_kappa_1.0_c1'..
+      Plotting lambda of model 'exp.sim_10_kappa_1.0_c1'..
+      Plotting psi of model 'exp.sim_10_kappa_1.0_c1'..
+      Plotting mu of model 'exp.sim_10_kappa_1.0_c1'..
+      Plotting LTT of model 'exp.sim_10_kappa_1.0_c2'..
+      Plotting nLTT of model 'exp.sim_10_kappa_1.0_c2'..
+      Plotting PSR of model 'exp.sim_10_kappa_1.0_c2'..
+      Plotting PDR of model 'exp.sim_10_kappa_1.0_c2'..
+      Plotting IPDR of model 'exp.sim_10_kappa_1.0_c2'..
+      Plotting event density of model 'exp.sim_10_kappa_1.0_c2'..
+      Plotting Reff of model 'exp.sim_10_kappa_1.0_c2'..
+      Plotting removal rate of model 'exp.sim_10_kappa_1.0_c2'..
+      Plotting sampling proportion of model 'exp.sim_10_kappa_1.0_c2'..
+      Plotting lambda of model 'exp.sim_10_kappa_1.0_c2'..
+      Plotting psi of model 'exp.sim_10_kappa_1.0_c2'..
+      Plotting mu of model 'exp.sim_10_kappa_1.0_c2'..
+Saving results from all simulations of scenario 'exp' kappa 1.0..
+      Plotting LTT of model 'exp.sim_10_kappa_0.5_c1'..
+      Plotting nLTT of model 'exp.sim_10_kappa_0.5_c1'..
+      Plotting PSR of model 'exp.sim_10_kappa_0.5_c1'..
+      Plotting PDR of model 'exp.sim_10_kappa_0.5_c1'..
+      Plotting IPDR of model 'exp.sim_10_kappa_0.5_c1'..
+      Plotting event density of model 'exp.sim_10_kappa_0.5_c1'..
+      Plotting Reff of model 'exp.sim_10_kappa_0.5_c1'..
+      Plotting removal rate of model 'exp.sim_10_kappa_0.5_c1'..
+      Plotting sampling proportion of model 'exp.sim_10_kappa_0.5_c1'..
+      Plotting lambda of model 'exp.sim_10_kappa_0.5_c1'..
+      Plotting psi of model 'exp.sim_10_kappa_0.5_c1'..
+      Plotting mu of model 'exp.sim_10_kappa_0.5_c1'..
+      Plotting LTT of model 'exp.sim_10_kappa_0.5_c2'..
+      Plotting nLTT of model 'exp.sim_10_kappa_0.5_c2'..
+      Plotting PSR of model 'exp.sim_10_kappa_0.5_c2'..
+      Plotting PDR of model 'exp.sim_10_kappa_0.5_c2'..
+      Plotting IPDR of model 'exp.sim_10_kappa_0.5_c2'..
+      Plotting event density of model 'exp.sim_10_kappa_0.5_c2'..
+      Plotting Reff of model 'exp.sim_10_kappa_0.5_c2'..
+      Plotting removal rate of model 'exp.sim_10_kappa_0.5_c2'..
+      Plotting sampling proportion of model 'exp.sim_10_kappa_0.5_c2'..
+      Plotting lambda of model 'exp.sim_10_kappa_0.5_c2'..
+      Plotting psi of model 'exp.sim_10_kappa_0.5_c2'..
+      Plotting mu of model 'exp.sim_10_kappa_0.5_c2'..
+Saving results from all simulations of scenario 'exp' kappa 0.5..
+Done. All outputs were written to 'output/run_035'
