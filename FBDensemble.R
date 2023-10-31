@@ -1,13 +1,15 @@
 #!/usr/local/bin/Rscript
 #
 # This R script uses code provided by Louca et al. for their paper "Fundamental identifiability limits in molecular epidemiology" (2021).
-# Edits (by Kate Truman) were made in order to conduct a simulation investigating the impact of different retention probabilities on FBD trees.
-# Edits are as follows:
+# Edits (by Kate Truman) were made in order to investigate the impact of different retention probabilities on FBD trees.
+# Key edits are as follows:
 # 
-# Only generate one tree type of larger size (175,000 - 200,000 tips) to fit models to.
+# Only generate one tree type of larger size (175,000 - 200,000 tips) to fit exponential models to.
+# Specify linear model rates manually
 # Include extant and extinct tips in generated trees
 # Remove piecewise linear and skyline model fitting in favour of directing selecting congruent models.
 # Allow labelling of sampled ancestors in tree output.
+# Reduce the number of parameters calculated for technical reasons
 #
 # Original comments from Louca et al.:
 #     This R script is provided as a Supplemental code to the paper:
@@ -54,7 +56,7 @@ FITTING_STEP_MIN				= 0.001
 FITTING_HOMOGENOUS_GRID			= FALSE
 fitting_Ntips2max_model_runtime = function(Ntips) max(2,Ntips/1e4) # runtime in seconds to allocate for likelihood evaluations during fitting, as a function of tree size
 
-ENSEMBLE_HBD_FITTING_NSIMS 			 	 		 = 15 # number of simulations to try for each scenario before aborting if no valid rates have been found.
+ENSEMBLE_HBD_FITTING_NSIMS 			 	 		 = 15 # now the number of attempts to make for each model type
 ENSEMBLE_HBD_FITTING_MIN_NTIPS		 	 		 = 100000
 ENSEMBLE_HBD_FITTING_MAX_NTIPS			 		 = 200000
 INCLUDE_EXS = TRUE
@@ -612,7 +614,7 @@ plot_curves = function(	file_basepath, 		# e.g. 'output/SILVA_curves_last_1000ye
 }
 
 
-pairwise_scatterplots = function(	output_basepath,	# e.g. 'output/all_simulations'
+pairwise_scatterplots = function(	output_basepath,	# e.g. 'output/all_runs'
                                   case_tag,			# character, will be included as subtitle in the plots
                                   scattervalues, 		# 2D numeric matrix of size NP x ND, storing NP scattered values for each of ND data types. Each scatterplot will show those values for a pair of data types, e.g. Y[,i] vs Y[,j]
                                   data_names,			# character vector of size ND. Can be NULL, in which case the column names of scattervalues are used as names.
@@ -1803,7 +1805,7 @@ for(e in seq_len(length(ENSEMBLE_HBD_SCENARIOS))){
   scenario_complete = FALSE
   scenario = ENSEMBLE_HBD_SCENARIOS[[e]]
   if(!scenario$include){
-    cat2(sprintf("Note: Skipping ensemble simulations under scenario '%s', as requested\n",scenario$name))
+    cat2(sprintf("Note: Skipping ensemble runs under scenario '%s', as requested\n",scenario$name))
     next
   }
   cat2(sprintf("Simulating trees under scenario '%s' (of type '%s')..\n",scenario$name,scenario$type))
@@ -1821,8 +1823,8 @@ for(e in seq_len(length(ENSEMBLE_HBD_SCENARIOS))){
     if (scenario_complete){
       break
     }
-    cat2(sprintf("  Simulation %d (%s)..\n",sim,scenario$name))
-    sim_dir=sprintf("%s/individual_simulations/sim_%d",scenario_dir,sim)
+    cat2(sprintf("  Run %d (%s)..\n",sim,scenario$name))
+    sim_dir=sprintf("%s/individual_runs/sim_%d",scenario_dir,sim)
     Nsim_attempts = 0
     
     while(TRUE){
@@ -1933,15 +1935,15 @@ for(e in seq_len(length(ENSEMBLE_HBD_SCENARIOS))){
     plot_model(	model_name		= sprintf("%s.sim_%d_kappa_0_c1",scenario$name,sim),
                 sim				= sim_true,
                 plot_maxx		= NULL,
-                plot_basepath	= sprintf("%s/deterministic_simulation_plots/",sim_dir),
+                plot_basepath	= sprintf("%s/deterministic_plots/",sim_dir),
                 time_units		= scenario$time_units,
                 verbose			= TRUE,
                 verbose_prefix	= "      ")
           			
           
     # save deterministic curves of this model
-    fout = prepare_output_file(file_path = sprintf("%s/deterministic_simulation.tsv",sim_dir), FALSE, verbose=FALSE, verbose_prefix="  ")
-    cat(sprintf("# Deterministic simulation %d of scenario '%s'\n# Generated on: %s\n# Random seed for this model: %d\n",sim,scenario$name,display_date_time,scenario$random_seed), file=fout, append=FALSE)
+    fout = prepare_output_file(file_path = sprintf("%s/deterministic_calcs.tsv",sim_dir), FALSE, verbose=FALSE, verbose_prefix="  ")
+    cat(sprintf("# Deterministic calculations %d of scenario '%s'\n# Generated on: %s\n# Random seed for this model: %d\n",sim,scenario$name,display_date_time,scenario$random_seed), file=fout, append=FALSE)
     param_names = c("LTT","nLTT","Pmissing","lambda","mu","psi","PDR","IPDR","PSR","Reff","removal_rate","sampling_proportion","diversification_rate", "lambda_psi") #"branching_density", "deterministic_branching_density",
     cat(sprintf("age\t%s\n",paste(param_names,collapse="\t")), file=fout, append=TRUE)
     write.table(cbind(sim_true$ages,as.data.frame(do.call(cbind, sim_true[param_names]))), file=fout, append=TRUE, sep="\t", row.names=FALSE, col.names=FALSE, quote=FALSE)
@@ -1953,7 +1955,7 @@ for(e in seq_len(length(ENSEMBLE_HBD_SCENARIOS))){
       alt_lambda = (lambdaA*0.25 - 0.5*lambdaB * exp(1.25*lambdaC * age_grid))
       congruent_model = congruent_hbds_model(age_grid = age_grid, PSR=sim_true$PSR, PDR=sim_true$PDR, lambda_psi=sim_true$lambda_psi, lambda=alt_lambda)
       if(!(congruent_model$success)){
-        cat("Congruent simulation failed\n")
+        cat("Congruent generation failed\n")
         cat(congruent_model$error)
         next
       }
@@ -1991,13 +1993,13 @@ for(e in seq_len(length(ENSEMBLE_HBD_SCENARIOS))){
         plot_model(	model_name		= sprintf("%s.sim_%d_kappa_0_c2",scenario$name,sim),
                 sim				= congruent_sim,
                 plot_maxx		= NULL,
-                plot_basepath	= sprintf("%s/deterministic_simulation_plots/",sim_dir),
+                plot_basepath	= sprintf("%s/deterministic_plots/",sim_dir),
                 time_units		= scenario$time_units,
                 verbose			= TRUE,
                 verbose_prefix	= "      ")			
           
     # save deterministic curves of this model
-    fout = prepare_output_file(file_path = sprintf("%s/deterministic_simulation.tsv",sim_dir), FALSE, verbose=FALSE, verbose_prefix="  ")
+    fout = prepare_output_file(file_path = sprintf("%s/deterministic_calcs.tsv",sim_dir), FALSE, verbose=FALSE, verbose_prefix="  ")
     cat(sprintf("# Deterministic simulation %d of scenario '%s'\n# Generated on: %s\n# Random seed for this model: %d\n",sim,scenario$name,display_date_time,scenario$random_seed), file=fout, append=FALSE)
     param_names = c("LTT","nLTT","Pmissing","lambda","mu","psi","PDR","IPDR","PSR","Reff","removal_rate","sampling_proportion","diversification_rate", "lambda_psi") #"branching_density", "deterministic_branching_density",
     cat(sprintf("age\t%s\n",paste(param_names,collapse="\t")), file=fout, append=TRUE)
@@ -2005,9 +2007,9 @@ for(e in seq_len(length(ENSEMBLE_HBD_SCENARIOS))){
     close(fout)
 
         
-    cat2(sprintf("Saving results from all simulations of scenario '%s' kappa %s..\n",scenario$name, 0))
+    cat2(sprintf("Saving results from all runs of scenario '%s' kappa %s..\n",scenario$name, 0))
     fout = prepare_output_file(file_path = sprintf("%s/all_simulation_results.tsv",scenario_dir), FALSE, verbose=FALSE, verbose_prefix="  ")
-    cat(sprintf("# Summary results from all simulations of scenario '%s' %s \n# Generated on: %s\n# Random seed for this scenario: %d\n",scenario$name, 0, display_date_time,scenario$random_seed), file=fout, append=FALSE)
+    cat(sprintf("# Summary results from all runs of scenario '%s' %s \n# Generated on: %s\n# Random seed for this scenario: %d\n",scenario$name, 0, display_date_time,scenario$random_seed), file=fout, append=FALSE)
     cat(sprintf("%s\t%s\n",paste(colnames(congruent_results),collapse="\t"), paste(colnames(congruent_results),collapse="\t")), file=fout, append=TRUE)
     write.table(congruent_results, file=fout, append=TRUE, sep="\t", row.names=FALSE, col.names=FALSE, quote=FALSE)
     close(fout)
@@ -2063,9 +2065,9 @@ for(e in seq_len(length(ENSEMBLE_HBD_SCENARIOS))){
                 verbose			= TRUE,
                 verbose_prefix	= "      ")
 
-    cat2(sprintf("Saving results from all simulations of scenario '%s' kappa %s..\n",scenario$name, formatC(kappa, digits = 1, format = "f")))
+    cat2(sprintf("Saving results from all runs of scenario '%s' kappa %s..\n",scenario$name, formatC(kappa, digits = 1, format = "f")))
     fout = prepare_output_file(file_path = sprintf("%s/all_simulation_results.tsv",scenario_dir), FALSE, verbose=FALSE, verbose_prefix="  ")
-    cat(sprintf("# Summary results from all simulations of scenario '%s' %s \n# Generated on: %s\n# Random seed for this scenario: %d\n",scenario$name, 0, display_date_time,scenario$random_seed), file=fout, append=FALSE)
+    cat(sprintf("# Summary results from all runs of scenario '%s' %s \n# Generated on: %s\n# Random seed for this scenario: %d\n",scenario$name, 0, display_date_time,scenario$random_seed), file=fout, append=FALSE)
     cat(sprintf("%s\t%s\n",paste(colnames(current_results),collapse="\t"), paste(colnames(current_results),collapse="\t")), file=fout, append=TRUE)
     write.table(current_results, file=fout, append=TRUE, sep="\t", row.names=FALSE, col.names=FALSE, quote=FALSE)
     close(fout)
