@@ -56,7 +56,7 @@ FITTING_STEP_MIN				= 0.001
 FITTING_HOMOGENOUS_GRID			= FALSE
 fitting_Ntips2max_model_runtime = function(Ntips) max(2,Ntips/1e4) # runtime in seconds to allocate for likelihood evaluations during fitting, as a function of tree size
 
-ENSEMBLE_HBD_FITTING_NSIMS 			 	 		 = 15 # now the number of attempts to make for each model type
+ENSEMBLE_HBD_FITTING_NSIMS 			 	 		 = 500 # now the max number of attempts to make for each model type
 ENSEMBLE_HBD_FITTING_MIN_NTIPS		 	 		 = 100000
 ENSEMBLE_HBD_FITTING_MAX_NTIPS			 		 = 200000
 INCLUDE_EXS = TRUE
@@ -435,7 +435,8 @@ plot_curves = function(	file_basepath, 		# e.g. 'output/SILVA_curves_last_1000ye
                         save_data			= TRUE,			# (boolean)
                         scatterpoints		= NULL,			# optional 2D numeric matrix of size NP x 2 (points only, X & Y) or NP x 4 (points & vertical error bars, X & Y & minY & maxY) or NP x 6 (points & vertical & horizontal error bars, X & Y & minX & maxX & minY & maxY), specifying a list of scatterpoints to add to the figure
                         verbose 			= TRUE,
-                        verbose_prefix 		= "  "){
+                        verbose_prefix 		= "  ",
+                        replace = FALSE, remove=FALSE){
   curves  = curves[sapply(curves,FUN = function(l) !is.null(l))] # remove NULL elements
   Ncurves = length(curves);
   if(is.null(curve_colors)){ curve_colors = PLOT_COLOR_PALETTE[1 + (seq_len(Ncurves)-1)%%length(PLOT_COLOR_PALETTE)]; }
@@ -465,7 +466,7 @@ plot_curves = function(	file_basepath, 		# e.g. 'output/SILVA_curves_last_1000ye
     cat("file_basepath is ", file_basepath, "\n")
     output_table=sprintf("%s.tsv",file_basepath)
     cat("Output table is ", output_table, "\n")
-    check_output_file(output_table,force_replace=FALSE,TRUE,"  ")
+    check_output_file(output_table,force_replace=remove,TRUE,"  ")
     cat(sprintf("# %s over %s (%s)\n# %s\n#\n",ylabel,xlabel,case_tag,stringr::str_replace_all(data_file_comments,"\n","\n# ")), file=output_table, append=TRUE)
     for(n in seq_len(Ncurves)){
       cat(sprintf("# %s\n%s\t%s\n",curve_names[[n]],xtype,ytype), file=output_table, append=TRUE);
@@ -1310,7 +1311,7 @@ plot_model = function(	model_name,			# (string) e.g. 'exp_lambda_const_mu'
                        plot_basepath,		# (string)
                        time_units,			# (string)
                        verbose,
-                       verbose_prefix){	# (string)
+                       verbose_prefix, remove=FALSE){	# (string)
   if(verbose) cat2(sprintf("%sPlotting LTT of model '%s'..\n",verbose_prefix,model_name))
   plot_curves(file_basepath		= sprintf("%sLTT",plot_basepath),
               xtype				= 'age',
@@ -1333,7 +1334,7 @@ plot_model = function(	model_name,			# (string) e.g. 'exp_lambda_const_mu'
               data_file_comments	= sprintf("LTT of model '%s'",model_name),
               save_data			= TRUE,
               verbose 			= TRUE,
-              verbose_prefix 		= paste0(verbose_prefix,"  "))
+              verbose_prefix 		= paste0(verbose_prefix,"  "), remove=remove)
   if(verbose) cat2(sprintf("%sPlotting nLTT of model '%s'..\n",verbose_prefix,model_name))
   plot_curves(file_basepath		= sprintf("%snLTT",plot_basepath),
               xtype				= 'age',
@@ -1356,7 +1357,7 @@ plot_model = function(	model_name,			# (string) e.g. 'exp_lambda_const_mu'
               data_file_comments	= sprintf("Normalized LTT of model '%s'",model_name),
               save_data			= TRUE,
               verbose 			= TRUE,
-              verbose_prefix 		= paste0(verbose_prefix,"  "))
+              verbose_prefix 		= paste0(verbose_prefix,"  "), remove=remove)
   if(verbose) cat2(sprintf("%sPlotting PSR of model '%s'..\n",verbose_prefix,model_name))
   plot_curves(file_basepath		= sprintf("%sPSR",plot_basepath),
               xtype				= 'age',
@@ -1379,7 +1380,7 @@ plot_model = function(	model_name,			# (string) e.g. 'exp_lambda_const_mu'
               data_file_comments	= sprintf("PSR of model '%s'",model_name),
               save_data			= TRUE,
               verbose 			= TRUE,
-              verbose_prefix 		= paste0(verbose_prefix,"  "))
+              verbose_prefix 		= paste0(verbose_prefix,"  "), remove=remove)
   if(verbose) cat2(sprintf("%sPlotting PDR of model '%s'..\n",verbose_prefix,model_name))
   plot_curves(file_basepath		= sprintf("%sPDR",plot_basepath),
               xtype				= 'age',
@@ -1402,7 +1403,7 @@ plot_model = function(	model_name,			# (string) e.g. 'exp_lambda_const_mu'
               data_file_comments	= sprintf("PDR of model '%s'",model_name),
               save_data			= TRUE,
               verbose 			= TRUE,
-              verbose_prefix 		= paste0(verbose_prefix,"  "))
+              verbose_prefix 		= paste0(verbose_prefix,"  "), remove=remove)
   if(verbose) cat2(sprintf("%sPlotting IPDR of model '%s'..\n",verbose_prefix,model_name))
   plot_curves(file_basepath		= sprintf("%sIPDR",plot_basepath),
               xtype				= 'age',
@@ -1425,7 +1426,7 @@ plot_model = function(	model_name,			# (string) e.g. 'exp_lambda_const_mu'
               data_file_comments	= sprintf("Age-integrated pulled diversification rate (IPDR) of model '%s'",model_name),
               save_data			= TRUE,
               verbose 			= TRUE,
-              verbose_prefix 		= paste0(verbose_prefix,"  "))
+              verbose_prefix 		= paste0(verbose_prefix,"  "), remove=remove)
   if(verbose) cat2(sprintf("%sPlotting event density of model '%s'..\n",verbose_prefix,model_name))
   plot_curves(file_basepath		= sprintf("%slambda_psi",plot_basepath),
               xtype				= 'age',
@@ -1448,7 +1449,7 @@ plot_model = function(	model_name,			# (string) e.g. 'exp_lambda_const_mu'
               data_file_comments	= sprintf("Event density (lambda*psi) of model '%s'",model_name),
               save_data			= TRUE,
               verbose 			= TRUE,
-              verbose_prefix 		= paste0(verbose_prefix,"  "))
+              verbose_prefix 		= paste0(verbose_prefix,"  "), remove=remove)
   if(verbose) cat2(sprintf("%sPlotting Reff of model '%s'..\n",verbose_prefix,model_name))
   plot_curves(file_basepath		= sprintf("%sReff",plot_basepath),
               xtype				= 'age',
@@ -1471,7 +1472,7 @@ plot_model = function(	model_name,			# (string) e.g. 'exp_lambda_const_mu'
               data_file_comments	= sprintf("Reff of model '%s'",model_name),
               save_data			= TRUE,
               verbose 			= TRUE,
-              verbose_prefix 		= paste0(verbose_prefix,"  "))
+              verbose_prefix 		= paste0(verbose_prefix,"  "), remove=remove)
   if(verbose) cat2(sprintf("%sPlotting removal rate of model '%s'..\n",verbose_prefix,model_name))
   plot_curves(file_basepath		= sprintf("%sremoval_rate",plot_basepath),
               xtype				= 'age',
@@ -1494,7 +1495,7 @@ plot_model = function(	model_name,			# (string) e.g. 'exp_lambda_const_mu'
               data_file_comments	= sprintf("Removal rate (mu+psi) of model '%s'",model_name),
               save_data			= TRUE,
               verbose 			= TRUE,
-              verbose_prefix 		= paste0(verbose_prefix,"  "))
+              verbose_prefix 		= paste0(verbose_prefix,"  "), remove=remove)
   if(verbose) cat2(sprintf("%sPlotting sampling proportion of model '%s'..\n",verbose_prefix,model_name))
   plot_curves(file_basepath		= sprintf("%ssampling_proportion",plot_basepath),
               xtype				= 'age',
@@ -1517,7 +1518,7 @@ plot_model = function(	model_name,			# (string) e.g. 'exp_lambda_const_mu'
               data_file_comments	= sprintf("Sampling proportion (psi/(mu+psi)) of model '%s'",model_name),
               save_data			= TRUE,
               verbose 			= TRUE,
-              verbose_prefix 		= paste0(verbose_prefix,"  "))
+              verbose_prefix 		= paste0(verbose_prefix,"  "), remove=remove)
   if(verbose) cat2(sprintf("%sPlotting lambda of model '%s'..\n",verbose_prefix,model_name))
   plot_curves(file_basepath		= sprintf("%slambda",plot_basepath),
               xtype				= 'age',
@@ -1540,7 +1541,7 @@ plot_model = function(	model_name,			# (string) e.g. 'exp_lambda_const_mu'
               data_file_comments	= sprintf("lambda of model '%s'",model_name),
               save_data			= TRUE,
               verbose 			= TRUE,
-              verbose_prefix 		= paste0(verbose_prefix,"  "))
+              verbose_prefix 		= paste0(verbose_prefix,"  "), remove=remove)
   if(verbose) cat2(sprintf("%sPlotting psi of model '%s'..\n",verbose_prefix,model_name))
   plot_curves(file_basepath		= sprintf("%spsi",plot_basepath),
               xtype				= 'age',
@@ -1563,7 +1564,7 @@ plot_model = function(	model_name,			# (string) e.g. 'exp_lambda_const_mu'
               data_file_comments	= sprintf("psi of model '%s'",model_name),
               save_data			= TRUE,
               verbose 			= TRUE,
-              verbose_prefix 		= paste0(verbose_prefix,"  "))	
+              verbose_prefix 		= paste0(verbose_prefix,"  "), remove=remove)	
   if(verbose) cat2(sprintf("%sPlotting mu of model '%s'..\n",verbose_prefix,model_name))
   plot_curves(file_basepath		= sprintf("%smu",plot_basepath),
               xtype				= 'age',
@@ -1586,7 +1587,7 @@ plot_model = function(	model_name,			# (string) e.g. 'exp_lambda_const_mu'
               data_file_comments	= sprintf("mu of model '%s'",model_name),
               save_data			= TRUE,
               verbose 			= TRUE,
-              verbose_prefix 		= paste0(verbose_prefix,"  "))					
+              verbose_prefix 		= paste0(verbose_prefix,"  "), remove=remove)					
 }
 
 
@@ -1771,14 +1772,15 @@ ENSEMBLE_HBD_SCENARIOS=list(
         type 					= "linear", # possible options are 'OU' and 'linear'
         include					= TRUE,
         time_units				= "year",
-        lambda_series_slope = function(){ return(0) },
-        lambda_series_intercept = function(){ return(12) },
-        mu_series_slope = function(){ return(-0.1) },
-        mu_series_intercept = function(){ return(11) },
-        psi_series_slope = function(){ return(0) },
-        psi_series_intercept = function(){ return(1/120) },
+        lambda_series_slope = function(){ return(0.2) }, 
+        lambda_series_intercept = function(){ return(3.5) }, 
+        mu_series_slope = function(){ return(0.015) }, 
+        mu_series_intercept = function(){ return(0.15) },
+        psi_series_slope = function(){ return(0.1) }, 
+        psi_series_intercept = function(){ return(1.9) },
         max_time				= 10, # duration of a simulation, in years
-        random_seed				= 1234          
+        random_seed				= 1234,
+        result_no = 1          
         ), 
   # We randomly generate the original exponential rates.
   list(	name					= "exp",
@@ -1791,15 +1793,16 @@ ENSEMBLE_HBD_SCENARIOS=list(
         mu_relaxation_rate		= function(){ runif(n=1, min=0.1, max=0.5) },
         epsilon_start			= function(){ runif(n=1, min=0.1, max=1) },
         epsilon_end				= function(){ runif(n=1, min=0.1, max=1) },
-        psi_relaxation_rate		= function(){ runif(n=1, min=0.1, max=0.5) },
-        psi_start				= function(){ exp(runif(n=1, min=log(0.01), max=log(1))) },
-        psi_end					= function(){ exp(runif(n=1, min=log(0.01), max=log(1))) },
+        psi_relaxation_rate		= function(){ runif(n=1, min=-0.5, max=0.5) },
+        psi_start				= function(){ exp(runif(n=1, min=log(0.01), max=log(5))) },
+        psi_end					= function(){ exp(runif(n=1, min=log(0.01), max=log(5))) },
         max_time				= 10,
-        random_seed				= 1234
+        random_seed				= 1010,
+        result_no = 10
         )
 )
 
-
+completed_list = list()
 for(e in seq_len(length(ENSEMBLE_HBD_SCENARIOS))){
   # Use to check if complete scenario results have been produced
   scenario_complete = FALSE
@@ -1819,13 +1822,19 @@ for(e in seq_len(length(ENSEMBLE_HBD_SCENARIOS))){
   
   # Prepare data frame
   congruent_results = blank_df()
-  for(sim in seq_len(ENSEMBLE_HBD_FITTING_NSIMS)){
+  produced = 0
+  count = 0
+  # for(sim in seq_len(ENSEMBLE_HBD_FITTING_NSIMS)){
+  while (produced < scenario$result_no && count < ENSEMBLE_HBD_FITTING_NSIMS){
+    count = count + 1
+    sim = produced
     if (scenario_complete){
       break
     }
     cat2(sprintf("  Run %d (%s)..\n",sim,scenario$name))
-    sim_dir=sprintf("%s/individual_runs/sim_%d",scenario_dir,sim)
+    sim_dir=sprintf("%s/individual_runs/run_%d",scenario_dir,sim)
     Nsim_attempts = 0
+
     
     while(TRUE){
       # Which retention probabilities to use, in addition to zero.
@@ -1932,13 +1941,15 @@ for(e in seq_len(length(ENSEMBLE_HBD_SCENARIOS))){
     congruent_results = set_true_results(congruent_results, sim_true)
     str(sim_true)
 
-    plot_model(	model_name		= sprintf("%s.sim_%d_kappa_0_c1",scenario$name,sim),
+    plot_model(	model_name		= sprintf("%s.run_%d_kappa_0_c1",scenario$name,sim),
                 sim				= sim_true,
                 plot_maxx		= NULL,
                 plot_basepath	= sprintf("%s/deterministic_plots/",sim_dir),
                 time_units		= scenario$time_units,
                 verbose			= TRUE,
-                verbose_prefix	= "      ")
+                verbose_prefix	= "      ", remove=TRUE)
+
+    
           			
           
     # save deterministic curves of this model
@@ -1952,8 +1963,10 @@ for(e in seq_len(length(ENSEMBLE_HBD_SCENARIOS))){
     present_day_psi = approx(x=sim_true$ages,y=sim_true$psi,xout=0)$y
     # Find congruent model rates under kappa = 0
     if(scenario$type == "exp"){
-      alt_lambda = (lambdaA*0.25 - 0.5*lambdaB * exp(1.25*lambdaC * age_grid))
-      congruent_model = congruent_hbds_model(age_grid = age_grid, PSR=sim_true$PSR, PDR=sim_true$PDR, lambda_psi=sim_true$lambda_psi, lambda=alt_lambda)
+      # Specify psi to try to get significant difference in nLTTs
+      alt_psi = (abs(psiA)*1.5 + 1.75*abs(psiB) * exp(0.5*(psiC) * age_grid))
+
+      congruent_model = congruent_hbds_model(age_grid = age_grid, PSR=sim_true$PSR, PDR=sim_true$PDR, lambda_psi=sim_true$lambda_psi, psi=alt_psi)
       if(!(congruent_model$success)){
         cat("Congruent generation failed\n")
         cat(congruent_model$error)
@@ -1971,9 +1984,13 @@ for(e in seq_len(length(ENSEMBLE_HBD_SCENARIOS))){
     }
     else {
       # Rates selected based on equations in Louca et al.
-      second_lambda = -muA*age_grid - muB + lambdaB
-      second_mu = psiA*age_grid + psiB
-      second_psi = lambdaB*psiB/(second_lambda)
+      # 2.3 constant based on one working solution.
+      second_lambda = 2.3 + lambdaB*psiB*age_grid + (lambdaB*psiA+psiB*lambdaA)*age_grid*age_grid/2 + (lambdaA*psiA*age_grid*age_grid*age_grid)/3
+      extended_lambda = lambdaA*age_grid + lambdaB
+      extended_mu = muA*age_grid +muB
+      extended_psi = psiA*age_grid + psiB
+      second_mu = second_lambda-extended_lambda+extended_mu+extended_psi-lambdaA/(lambdaA*age_grid+lambdaB)
+      second_psi = extended_lambda*extended_psi/second_lambda
     }
       # Simulate deterministic values for the congruent scenario
      congruent_sim = simulate_deterministic_hbds(age_grid = age_grid, lambda = second_lambda, mu = second_mu, 
@@ -1990,7 +2007,7 @@ for(e in seq_len(length(ENSEMBLE_HBD_SCENARIOS))){
     # Update data frame
     congruent_results = set_congruent_scenario_results(congruent_results, sim_true, congruent_sim)
 
-        plot_model(	model_name		= sprintf("%s.sim_%d_kappa_0_c2",scenario$name,sim),
+        plot_model(	model_name		= sprintf("%s.run_%d_kappa_0_c2",scenario$name,sim),
                 sim				= congruent_sim,
                 plot_maxx		= NULL,
                 plot_basepath	= sprintf("%s/deterministic_plots/",sim_dir),
@@ -2050,17 +2067,17 @@ for(e in seq_len(length(ENSEMBLE_HBD_SCENARIOS))){
       }
 
       
-      plot_model(	model_name		= sprintf("%s.sim_%d_kappa_%s_c1",scenario$name,sim,formatC(kappa, digits = 1, format = "f")),
+      plot_model(	model_name		= sprintf("%s.run_%d_kappa_%s_c1",scenario$name,sim,formatC(kappa, digits = 1, format = "f")),
                 sim				= sim_true,
                 plot_maxx		= NULL,
-                plot_basepath	= sprintf("%s/deterministic_simulation_plots/",sim_dir),
+                plot_basepath	= sprintf("%s/deterministic_plots/",sim_dir),
                 time_units		= scenario$time_units,
                 verbose			= TRUE,
                 verbose_prefix	= "      ")			
-      plot_model(	model_name		= sprintf("%s.sim_%d_kappa_%s_c2",scenario$name,sim,formatC(kappa, digits = 1, format = "f")),
+      plot_model(	model_name		= sprintf("%s.run_%d_kappa_%s_c2",scenario$name,sim,formatC(kappa, digits = 1, format = "f")),
                 sim				= current_congruent,
                 plot_maxx		= NULL,
-                plot_basepath	= sprintf("%s/deterministic_simulation_plots/",sim_dir),
+                plot_basepath	= sprintf("%s/deterministic_plots/",sim_dir),
                 time_units		= scenario$time_units,
                 verbose			= TRUE,
                 verbose_prefix	= "      ")
@@ -2079,7 +2096,9 @@ for(e in seq_len(length(ENSEMBLE_HBD_SCENARIOS))){
     cat("Psi: ",psiA, " ", psiB, " ",psiC, "\n")
     cat("Alt lambda: ", lambdaA*0.25, " ", lambdaB*-0.5, " ", lambdaC*1.25, "\n")
     }
-    scenario_complete = TRUE
+    produced = produced + 1
+    completed_list[length(completed_list) + 1] = produced
   }
+  cat(paste0(unlist(completed_list), collapse = " "), "\n")
 }
 cat2(sprintf("Done. All outputs were written to '%s'\n",output_dir));
