@@ -1772,12 +1772,12 @@ ENSEMBLE_HBD_SCENARIOS=list(
         type 					= "linear", # possible options are 'OU' and 'linear'
         include					= TRUE,
         time_units				= "year",
-        lambda_series_slope = function(){ return(0.2) }, 
-        lambda_series_intercept = function(){ return(3.5) }, 
-        mu_series_slope = function(){ return(0.015) }, 
-        mu_series_intercept = function(){ return(0.15) },
-        psi_series_slope = function(){ return(0.1) }, 
-        psi_series_intercept = function(){ return(1.9) },
+        lambda_series_slope = function(){ return(0) }, # 0.2
+        lambda_series_intercept = function(){ return(12) }, # 3.5
+        mu_series_slope = function(){ return(-0.1) }, # 0.015
+        mu_series_intercept = function(){ return(11) }, # 0.15
+        psi_series_slope = function(){ return(0) }, # 0.1
+        psi_series_intercept = function(){ return(1/120) }, #1.9
         max_time				= 10, # duration of a simulation, in years
         random_seed				= 1234,
         result_no = 1          
@@ -1798,7 +1798,7 @@ ENSEMBLE_HBD_SCENARIOS=list(
         psi_end					= function(){ exp(runif(n=1, min=log(0.01), max=log(5))) },
         max_time				= 10,
         random_seed				= 1010,
-        result_no = 10
+        result_no = 0
         )
 )
 
@@ -1984,8 +1984,8 @@ for(e in seq_len(length(ENSEMBLE_HBD_SCENARIOS))){
     }
     else {
       # Rates selected based on equations in Louca et al.
-      # 2.3 constant based on one working solution.
-      second_lambda = 2.3 + lambdaB*psiB*age_grid + (lambdaB*psiA+psiB*lambdaA)*age_grid*age_grid/2 + (lambdaA*psiA*age_grid*age_grid*age_grid)/3
+      # 1.2 constant based on one working solution for current linear rates.
+      second_lambda = 1.2 + lambdaB*psiB*age_grid + (lambdaB*psiA+psiB*lambdaA)*age_grid*age_grid/2 + (lambdaA*psiA*age_grid*age_grid*age_grid)/3
       extended_lambda = lambdaA*age_grid + lambdaB
       extended_mu = muA*age_grid +muB
       extended_psi = psiA*age_grid + psiB
