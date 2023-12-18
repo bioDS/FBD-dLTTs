@@ -1,5 +1,5 @@
-# FBDsims
-Simulations for identifiability paper
+# FBD-dLTTs
+Determinstic lineage-through-time calculations for "The Fossilised Birth-Death Model is Identifiable"
 
 Castor was built using Rcpp - most underlying functionality is written in C and then imported into R. 
 The simulations use a [forked version of castor](https://github.com/bioDS/castor), so that sampled ancestor trees can be produced.
