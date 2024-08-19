@@ -9,7 +9,9 @@ The simulations use a [forked version of castor](https://github.com/bioDS/castor
 Note that further work is necessary to make deterministic density calculations suitable for sampled ancestor trees.
 
 To run the code using this version of castor, clone the repo linked above. 
-Then, run `source updateRunFBD.sh` to build the package, and run the Rscript. You will need to make sure you do not have the standard castor implementation loaded into R.
+Then, run `source updateRunFBD.sh` to build the package, and run the Rscript `FBDensemble.R`. You will need to make sure you do not have the standard castor implementation loaded into R.
 
-If you have already built the package, you can run just the Rscript using `Rscript FBDensemble.R`.
+If you have already built the package, you can run just the main Rscript using `Rscript FBDensemble.R`.
+
+To produce nLTT curves using removal probabilities which are not constant, run `Rscript linearKappa.R`.
 
